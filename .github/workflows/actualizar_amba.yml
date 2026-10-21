@@ -52,7 +52,7 @@ jobs:
         run: |
           if [ "$MODO" = "completo" ]; then SEL="todos"; else SEL="$MUNICIPIOS"; fi
           if ! printf '%s' "$SEL" | grep -Eq '^[A-Za-z0-9_ áéíóúÁÉÍÓÚñÑ,.]+$'; then echo "Selección inválida"; exit 1; fi
-          python scripts/extraer.py --municipios "$SEL" --informe-ejecucion informe_ejecucion.md | tee extraccion.json
+          python scripts/extraer.py --municipios "$SEL" --informe-ejecucion informe_ejecucion.md --diagnostico diagnostico | tee extraccion.json
 
       - name: Validar CSV e informe de cobertura
         run: python scripts/validar.py --modo "$MODO" --informe docs/informe_calidad.md
@@ -78,6 +78,7 @@ jobs:
             docs/informe_calidad.md
             extraccion.json
             informe_ejecucion.md
+            diagnostico/
 
       - name: Commit solo si hay cambios reales
         if: ${{ inputs.confirmar_cambios }}

@@ -113,6 +113,10 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
             if v and c not in ("municipio_id", "snapshot_id", "fecha_extraccion", "url_fuente", "fecha_actualizacion_portal") \
                     and (f["municipio_id"], c) not in fuentes_por_campo:
                 err.append(f"{C.F_INDICADORES} {f['municipio_id']}: '{c}' sin fila de trazabilidad en 05")
+    for f in m:  # datos de la ficha en 01 también requieren trazabilidad
+        for c in ("intendente_nombre_completo", "partido_politico", "frente_electoral", "fecha_asuncion", "poblacion_2022"):
+            if f.get(c) and (f["municipio_id"], c) not in fuentes_por_campo:
+                err.append(f"{C.F_MUNICIPIOS} {f['municipio_id']}: '{c}' sin fila de trazabilidad en 05")
     for f in datos.get(C.F_ALERTAS, []):
         if f["severidad"] not in C.SEVERIDADES:
             err.append(f"{C.F_ALERTAS} {f['alerta_id']}: severidad inválida")

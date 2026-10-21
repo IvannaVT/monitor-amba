@@ -296,7 +296,7 @@ def test_parsing_json_embebido_y_etiquetas_no_reconocidas():
     h, _ = E.interpretar_pagina(leer("ficha_json_prueba.html"))
     assert h["indice_global"]["valor"] == 48.5 and h["ranking_provincial"]["valor"] == 30
     assert h["transparencia_semaforo"]["valor"] == "AMARILLO" and h["seguridad_puntaje"]["valor"] == 62.5
-    assert "campo desconocido" in [x.lower() for x in E.etiquetas_no_reconocidas(leer("ficha_json_prueba.html"))]
+    assert any("campo desconocido" in x.lower() for x in E.etiquetas_no_reconocidas(leer("ficha_json_prueba.html")))
 
 
 def test_descubre_rutas_m_en_html_crudo():
@@ -330,3 +330,87 @@ def test_informe_ejecucion_diferencia_categorias(dirs):
     md = E.informe_ejecucion(res)
     for t in ("con éxito", "bloqueadas", "ausentes", "efectivamente extraídos", "ACCESO_DENEGADO_HTTP"):
         assert t in md
+
+
+# ------------------------------------------------ fichas con las secciones reales
+REF = {"a": 56.2, "b": 82.2, "c": 65.7}   # índices de comprobación: SOLO en pruebas
+ESPERADO = {
+    "a": dict(transparencia_puntaje=40, transparencia_relevamiento_propio=35, transparencia_asap=45,
+              servicios_seguridad_puntaje=52, seguridad_puntaje=61, control_puntaje=33, ranking_provincial=101,
+              ranking_pares=9, transparencia_semaforo="AMARILLO", poblacion_2022=342677, seccion_electoral="Tercera",
+              intendente_nombre_completo="Ana Ficticia Prueba", partido_politico="Partido de Prueba",
+              frente_electoral="Frente de Prueba", fecha_asuncion="2023-12-10", ejercicio_fallo_htc="2021", señales_control=3),
+    "b": dict(transparencia_puntaje=88, transparencia_relevamiento_propio=90, transparencia_asap=75,
+              servicios_seguridad_puntaje=80, seguridad_puntaje=84.5, control_puntaje=70, ranking_provincial=3,
+              transparencia_semaforo="VERDE", poblacion_2022=269420, intendente_nombre_completo="Luis Ficticio Prueba",
+              partido_politico="Partido de Prueba", frente_electoral="Frente de Prueba", ejercicio_fallo_htc="2021"),
+    "c": dict(transparencia_puntaje=70, transparencia_relevamiento_propio=66, servicios_seguridad_puntaje=50,
+              seguridad_puntaje=58, control_puntaje=62, ranking_provincial=44, poblacion_2022=360000,
+              intendente_nombre_completo="Carla Ficticia Prueba", partido_politico="Partido de Prueba"),
+}
+
+
+@pytest.mark.parametrize("k", ["a", "b", "c"])
+def test_fichas_de_referencia(k):
+    h, contra = E.interpretar_pagina(leer(f"ficha_ref_{k}.html"))
+    assert h["indice_global"]["valor"] == REF[k]
+    for campo, esperado in ESPERADO[k].items():
+        assert h[campo]["valor"] == esperado, (campo, h.get(campo))
+    assert contra == []
+
+
+def test_pilares_no_se_confunden_y_se_rechazan_pesos():
+    h, _ = E.interpretar_pagina(leer("ficha_ref_a.html"))
+    assert len({h[c]["valor"] for c in ("transparencia_puntaje", "transparencia_relevamiento_propio", "transparencia_asap",
+                                        "servicios_seguridad_puntaje", "seguridad_puntaje", "control_puntaje")}) == 6
+    assert 50 not in (h["transparencia_puntaje"]["valor"], h["control_puntaje"]["valor"])  # 50 % / 15 % son pesos
+
+
+def test_valores_trampa_se_rechazan_y_se_informan():
+    a = E.analizar_ficha(leer("fichas_trampa.html"))
+    assert "transparencia_puntaje" not in a["hallados"] and "seguridad_puntaje" not in a["hallados"]
+    assert "poblacion_2022" not in a["hallados"]  # sin año 2022 verificable
+    txt = " | ".join(a["rechazados"])
+    assert "escala 50" in txt and "fuera de 0-100" in txt and "sin año 2022" in txt
+
+
+def test_intendente_inferido_por_posicion_queda_con_confianza_baja():
+    h, _ = E.interpretar_pagina(leer("ficha_ref_a.html"))
+    assert h["intendente_nombre_completo"]["confianza"] == "BAJO" and "posición" in h["intendente_nombre_completo"]["obs"]
+    assert E.interpretar_pagina(leer("ficha_ref_b.html"))[0]["intendente_nombre_completo"]["confianza"] == "MEDIO"
+
+
+def test_valores_de_referencia_no_estan_en_codigo_ni_datos():
+    prohibidos = ["56,2", "82,2", "65,7", "56.2", "82.2", "65.7"]
+    for ruta in [*(AQUI.parent / "scripts").glob("*.py"), *(AQUI.parent / "config").glob("*"),
+                 *(AQUI.parent / "data" / "actual").glob("*.csv")]:
+        txt = ruta.read_text(encoding="utf-8-sig")
+        assert not any(p in txt for p in prohibidos), ruta
+
+
+def test_pipeline_con_ficha_real_extrae_a_01_y_04_con_trazabilidad(dirs):
+    pag = paginas()
+    pag[FICHA] = R(text=leer("ficha_ref_a.html"))
+    res, _ = correr(dirs, pag, municipios="avellaneda")
+    m = C.leer_csv(dirs[0] / C.F_MUNICIPIOS)[0]
+    assert m["indice_global"] == "56,2" and m["intendente_nombre_completo"] == "Ana Ficticia Prueba"
+    assert m["partido_politico"] == "Partido de Prueba" and m["poblacion_2022"] == "342677" and m["fecha_asuncion"] == "2023-12-10"
+    assert m["intendente_nombre"] == "" and m["coalicion_actual"] == ""   # no se inventa ni se separa
+    i = C.leer_csv(dirs[0] / C.F_INDICADORES)[0]
+    assert i["transparencia_relevamiento_propio"] == "35" and i["servicios_seguridad_puntaje"] == "52"
+    f = [x for x in C.leer_csv(dirs[0] / C.F_FUENTES) if x["campo_verificado"] == "intendente_nombre_completo"][0]
+    assert f["nivel_confianza"] == "BAJO" and "pendiente de verificación" in f["observaciones"] or "inferido" in f["observaciones"]
+    d = next(x for x in inc(dirs) if x["tipo_incidencia"] == "DATOS_NO_ENCONTRADOS")["descripcion"]
+    assert "Secciones vistas" in d and "Etiquetas no reconocidas" in d
+    assert V.validar(dirs[0], "prueba")[0] == [], V.validar(dirs[0], "prueba")[0]
+
+
+def test_diagnostico_guarda_html_y_estructura(dirs, tmp_path):
+    pag = paginas()
+    pag[FICHA] = R(text=leer("ficha_ref_b.html"))
+    ses = FakeSession(pag)
+    E.ejecutar("avellaneda", "2026-10-21", cliente=E.Cliente(pausa=0, session=ses), dir_actual=dirs[0],
+               dir_historico=dirs[1], dir_diagnostico=tmp_path / "diag")
+    est = (tmp_path / "diag" / "ba_avellaneda_estructura.txt").read_text(encoding="utf-8")
+    assert "Datos clave" in est and "Cómo se compone su índice" in est and "indice_global = 82.2" in est
+    assert (tmp_path / "diag" / "ba_avellaneda.html").exists()
