@@ -21,3 +21,5 @@ Sin APIs pagas ni IA: solo `requests`, `beautifulsoup4`, `lxml`. Respeta `robots
 ## Directorio de vinculación institucional
 Relevamiento de canales de contacto (Ceremonial y Protocolo, Relaciones Institucionales, Secretaría Privada, Despacho/Jefatura, Concejo Deliberante, Mesa de Entradas) en `data/actual/03_amba_contactos_protocolo.csv`.
 `python scripts/contactos.py --municipios avellaneda,vicente_lopez,tres_de_febrero` · workflow manual *Relevar contactos institucionales AMBA*. Independiente de los indicadores. Ver [metodología](docs/metodologia.md).
+
+Ampliación a 40 municipios: ver [cobertura territorial](docs/cobertura_territorial.md) y la sección *Ampliación a los 40 municipios* de la [metodología](docs/metodologia.md). Orden: `descubrir_sitios` → `intermedia` (8) → `completo` (40), siempre con auditoría antes de guardar resultados.

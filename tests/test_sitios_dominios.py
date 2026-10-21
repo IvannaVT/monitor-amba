@@ -59,7 +59,7 @@ def test_validador_detecta_sitios_mal_configurados(dirs, tmp_path, monkeypatch):
              "ba_merlo;https://www.merlo-prueba.gob.ar/;;CONFIRMADO;x;avellaneda.gob.ar\n")  # alias homónimo
     p.write_text("﻿" + cab + filas, encoding="utf-8")
     e = "\n".join(V.validar(Path("/nonexistent"), "prueba")[0])
-    for frag in ("homónimo de otra provincia", "URL https completa", "ya está asignado", "CONFIRMADO sin fuente", "incluye el homónimo"):
+    for frag in ("homónimo de otra provincia", "URL https completa", "ya está asignado", "sin fuente de la verificación", "incluye el homónimo"):
         assert frag in e, (frag, e)
 
 

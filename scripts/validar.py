@@ -166,7 +166,7 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
     hosts_sitios: dict[str, str] = {}
     for s_ in C.leer_csv(C.ARCHIVO_SITIOS):  # sitios oficiales: https, un dominio por municipio, sin homónimos de otras provincias
         ref = f"config/sitios_oficiales.csv {s_['municipio_id']}"
-        if s_.get("estado") not in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "CONFIRMADO"):
+        if s_.get("estado") not in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "VERIFICADO_TECNICAMENTE", "CONFIRMADO"):
             err.append(f"{ref}: estado inválido '{s_.get('estado')}'")
         u_ = (s_.get("sitio_oficial") or "").strip()
         if not u_:
@@ -179,8 +179,8 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         if host_ in hosts_sitios and hosts_sitios[host_] != s_["municipio_id"]:
             err.append(f"{ref}: el dominio {host_} ya está asignado a {hosts_sitios[host_]}")
         hosts_sitios[host_] = s_["municipio_id"]
-        if s_.get("estado") == "CONFIRMADO" and not (s_.get("fuente") or "").strip():
-            err.append(f"{ref}: CONFIRMADO sin fuente de la confirmación")
+        if s_.get("estado") in ("CONFIRMADO", "VERIFICADO_TECNICAMENTE") and not (s_.get("fuente") or "").strip():
+            err.append(f"{ref}: {s_['estado']} sin fuente de la verificación")
         for d_ in filter(None, (x.strip() for x in (s_.get("dominios_verificados") or "").split(";"))):
             if _CP.dominio_homonimo(d_):
                 err.append(f"{ref}: dominios_verificados incluye el homónimo {d_}")

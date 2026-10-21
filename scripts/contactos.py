@@ -26,6 +26,16 @@ import extraer as E  # noqa: E402
 import normalizar as N  # noqa: E402
 
 SITIOS = C.ARCHIVO_SITIOS
+# Muestra intermedia (8): los 3 del piloto + 5 grandes del conurbano. El resto se amplía con `completo`.
+MUESTRA_INTERMEDIA = ["ba_avellaneda", "ba_vicente_lopez", "ba_tres_de_febrero", "ba_lanus", "ba_lomas_de_zamora", "ba_quilmes",
+                      "ba_moron", "ba_san_isidro"]
+
+
+def seleccionar(cfg_all: list[dict], pedido: str) -> list[dict]:
+    """'intermedia' = muestra de 8; 'todos' = los 40; o una lista de ids/nombres separados por coma."""
+    if pedido.strip().lower() == "intermedia":
+        return [c for c in cfg_all if c["municipio_id"] in MUESTRA_INTERMEDIA]
+    return E.seleccionar(cfg_all, pedido)
 MAX_PAGINAS, MAX_PAGINAS_HCD = 12, 6
 CAMPOS_CANAL = ["responsable_nombre", "responsable_apellido", "responsable_nombre_completo", "cargo", "email_institucional",
                 "telefono_institucional", "interno", "direccion", "horario_atencion", "sitio_web", "url_fuente", "evidencia"]
@@ -232,6 +242,7 @@ def _agregar(hallazgos: list[dict]) -> dict:
                                            cargo="", responsable_original="", urls=[], canales_por_url={}, fechas={}, hs=[], omitidos=0,
                                            discrepancias=[], resp_h=None))
         a["hs"].append(h)
+        a["fallback"] = h.get("fallback", False) and a.get("fallback", True)   # solo si TODA la evidencia general es de respaldo
         if h.get("responsable") and not a["responsable"]:      # la persona publicada se conserva aunque no haya canal
             a["responsable"], a["cargo"], a["responsable_original"], a["resp_h"] = h["responsable"], h.get("cargo", ""), h.get("responsable_original", ""), h
         a["discrepancias"] += [d for d in h.get("discrepancias", []) if d not in a["discrepancias"]]
@@ -307,6 +318,10 @@ def construir_filas(res: dict, fecha: str, snap: str) -> tuple[list[dict], list[
                              "El texto visible y el enlace tel: no coinciden (se registró el texto publicado): " +
                              "; ".join(f"'{t}' vs tel:{h}" for t, h in a["discrepancias"]), a["urls"][0] if a["urls"] else a["hs"][0]["url"],
                              fecha, snap, "BAJO", "Confirmar cuál es el número vigente en la fuente oficial."))
+        if a and a.get("fallback") and clave == "contacto_general":
+            incs.append(_inc(mid, clave, "CONTACTO_GENERAL_POR_RESPALDO",
+                             "No había una zona de contacto reconocible: el contacto general se tomó de los canales institucionales del cuerpo de la página.",
+                             a["hs"][0]["url"], fecha, snap, "BAJO", "Auditar la fuente antes de usarlo."))
         if a and a["omitidos"]:
             incs.append(_inc(mid, clave, "CANAL_NO_INSTITUCIONAL_OMITIDO",
                              f"{a['omitidos']} correo(s) de dominio no institucional o teléfono(s) móvil/WhatsApp publicados no se registraron.",
@@ -438,7 +453,7 @@ def main(argv=None) -> int:
     ahora = C.ahora_utc()
     fecha, snap = a.fecha or ahora.strftime("%Y-%m-%d"), C.snapshot_desde(ahora)
     cfg_all = C.cargar_municipios_cfg()
-    sel = E.seleccionar(cfg_all, a.municipios)
+    sel = seleccionar(cfg_all, a.municipios)
     sitios, cli = cargar_sitios(), ClienteContactos(pausa=a.pausa)
     resultados = [relevar_municipio(cli, c, sitios.get(c["municipio_id"], {}), fecha, snap, a.max_paginas, a.diagnostico) for c in sel]
     resumen = aplicar(resultados, fecha, snap, C.DIR_ACTUAL, C.DIR_HISTORICO)
