@@ -77,7 +77,8 @@ CAMPOS_FICHA_01 = {
 TIPOS: dict[str, str] = {c: d["tipo"] for c, d in CAMPOS_PORTAL.items()}
 TIPOS.update(CAMPOS_FICHA_01)
 TIPOS[CAMPO_FECHA_PORTAL[0]] = "fecha"
-TIPOS["cargos_presupuestados"] = "int"  # solo trazabilidad (05): 04 no tiene columna para cargos
+TIPOS["cargos_presupuestados"] = "int"
+TIPOS["indec_codigo"] = "indec"  # solo trazabilidad (05) y config; lo publica el portal, no está verificado contra INDEC
 PCT = {"cobertura_agua_pct", "cobertura_cloacas_pct", "cobertura_gas_pct"}
 PUNTAJES = {"indice_global", "transparencia_puntaje", "transparencia_relevamiento_propio", "transparencia_asap",
             "servicios_seguridad_puntaje", "seguridad_puntaje", "control_puntaje"}
@@ -110,6 +111,7 @@ _EXTRA = [
     ("fecha_asuncion", ["desde"], [], ("intendente",), True),
     ("poblacion_2022", ["habitantes"], [("poblacion",)], ("datos clave",), False),
     ("seccion_electoral", ["seccion"], [("seccion electoral",)], (), False),
+    ("indec_codigo", ["indec codigo de partido", "codigo indec"], [("indec", "codigo")], (), False),
     ("cobertura_cloacas_pct", [], [("cloacas",)], (), False),
     ("gasto_por_habitante", [], [("gasto", "habitante")], (), False),
     ("empleados_municipales", [], [("empleados", "municipales")], (), False),
@@ -303,6 +305,8 @@ def validar_valor(campo: str, token: str, etiqueta: str = "") -> tuple[object | 
             return None, "formato de cantidad no reconocido"
         n = int(m.group(1).replace(".", ""))
         return (n, "") if tipo != "poblacion" or n >= 1000 else (None, "población implausible")
+    if tipo == "indec":
+        return (t, "") if re.fullmatch(r"06\d{3}", t) else (None, "código de partido INDEC inválido (se esperan 5 dígitos que empiecen con 06)")
     if tipo == "semaforo":
         v = _semaforo(t) if len(t) <= 30 else None
         return (v, "") if v else (None, "no es un color de semáforo")

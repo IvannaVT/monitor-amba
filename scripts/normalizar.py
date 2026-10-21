@@ -17,6 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import comun as C  # noqa: E402
 
 # Columnas que cambian en cada ejecución aunque los datos no cambien.
+# Datos que pertenecen a la persona en el cargo: se reemplazan juntos si cambia el intendente.
+GRUPO_INTENDENTE = ("intendente_nombre", "intendente_apellido", "intendente_condicion", "fecha_asuncion",
+                    "partido_politico", "frente_electoral", "coalicion_actual")
 VOLATILES = {"snapshot_id", "fecha_extraccion", "fecha_verificacion", "fecha_consulta",
              "fecha_ultima_revision", "fecha_deteccion"}
 
@@ -34,6 +37,13 @@ def fusionar_municipios(existentes: list[dict], nuevas: list[dict]) -> list[dict
     for n in nuevas:
         actual = por_id.setdefault(n["municipio_id"], {})
         cambio = False
+        nuevo_nombre = _s(n.get("intendente_nombre_completo"))
+        if nuevo_nombre and actual.get("intendente_nombre_completo") and actual["intendente_nombre_completo"] != nuevo_nombre:
+            # Cambió la persona: sus datos dependientes no deben heredar los de la anterior (aunque la ficha no los traiga).
+            for k in GRUPO_INTENDENTE:
+                if actual.get(k) != _s(n.get(k)):
+                    actual[k] = _s(n.get(k))
+                    cambio = True
         for k, v in n.items():
             if k in VOLATILES or _vacio(v):
                 continue
@@ -101,8 +111,9 @@ def escribir_con_historial(nombre: str, filas: list[dict], dir_actual: Path, dir
     """Escribe solo si hay cambios reales. Devuelve True si escribió."""
     ruta = dir_actual / nombre
     previas = C.leer_csv(ruta)
+    encabezado_ok = ruta.exists() and ruta.read_bytes().decode("utf-8-sig").split("\n", 1)[0].rstrip("\r").split(";") == C.ESQUEMAS[nombre]
     if _contenido_significativo(previas) == _contenido_significativo([{k: _s(v) for k, v in r.items()} for r in filas]) \
-            and ruta.exists():
+            and ruta.exists() and encabezado_ok:   # si el esquema cambió, se migra el archivo (la versión previa va a historico/)
         return False
     if previas:
         destino = dir_hist / fecha / nombre

@@ -106,7 +106,7 @@ def test_empleados_ocupados_no_se_mezclan_con_cargos_presupuestados():
 
 
 def test_no_se_inventan_campos_ni_se_mezclan_otros_municipios():
-    permitidos = (set(C.ESQUEMAS[C.F_INDICADORES]) | set(P.CAMPOS_FICHA_01) | {"cargos_presupuestados"})
+    permitidos = (set(C.ESQUEMAS[C.F_INDICADORES]) | set(P.CAMPOS_FICHA_01) | {"indec_codigo"})
     for k in MUNIS:
         a = P.analizar_tokens(tokens(k))
         assert set(a["hallados"]) <= permitidos, set(a["hallados"]) - permitidos
@@ -118,7 +118,7 @@ def test_no_se_inventan_campos_ni_se_mezclan_otros_municipios():
 
 def test_cantidad_de_campos_por_ficha():
     cuenta = {k: len([c for c in valores(k) if c != "fecha_actualizacion_portal"]) for k in MUNIS}
-    assert cuenta == {"avellaneda": 27, "vicente_lopez": 28, "tres_de_febrero": 28}
+    assert cuenta == {"avellaneda": 28, "vicente_lopez": 29, "tres_de_febrero": 29}
 
 
 def test_los_valores_de_referencia_no_estan_en_produccion():
@@ -139,7 +139,7 @@ def test_pipeline_con_fichas_reales_escribe_01_04_05_y_valida(dirs, monkeypatch)
     res = E.ejecutar(",".join(MUNIS), "2026-10-21", cliente=E.Cliente(pausa=0, session=ses),
                      dir_actual=dirs[0], dir_historico=dirs[1])
     assert {n: m["campos_extraidos"] for n, m in res["municipios"].items()} == \
-        {"Avellaneda": 27, "Vicente López": 28, "Tres de Febrero": 28}
+        {"Avellaneda": 28, "Vicente López": 29, "Tres de Febrero": 29}
     m01 = {r["municipio_id"]: r for r in C.leer_csv(dirs[0] / C.F_MUNICIPIOS)}
     i04 = {r["municipio_id"]: r for r in C.leer_csv(dirs[0] / C.F_INDICADORES)}
     f05 = C.leer_csv(dirs[0] / C.F_FUENTES)
@@ -149,6 +149,7 @@ def test_pipeline_con_fichas_reales_escribe_01_04_05_y_valida(dirs, monkeypatch)
     assert i04["ba_tres_de_febrero"]["empleados_municipales"] == "" and i04["ba_tres_de_febrero"]["tipo_dato_empleo"] == "CARGOS_PRESUPUESTADOS"
     assert i04["ba_vicente_lopez"]["empleados_municipales"] == "4125" and i04["ba_vicente_lopez"]["empleo_periodo"] == "2026-08"
     assert i04["ba_avellaneda"]["homicidios_tasa_100k"] == "4,4" and i04["ba_avellaneda"]["cobertura_cloacas_pct"] == "80,3"
+    assert i04["ba_tres_de_febrero"]["cargos_presupuestados"] == "3720" and i04["ba_vicente_lopez"]["cargos_presupuestados"] == ""
     carg = [f for f in f05 if f["campo_verificado"] == "cargos_presupuestados"]
     assert len(carg) == 1 and carg[0]["municipio_id"] == "ba_tres_de_febrero" and carg[0]["valor_obtenido"].startswith("3.720")
     for f in f05:

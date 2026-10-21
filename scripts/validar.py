@@ -36,7 +36,7 @@ COLUMNAS_NUMERICAS: dict[str, dict[str, str]] = {
         "cobertura_cloacas_pct", "cobertura_gas_pct", "cargos_htc_monto", "multas_htc_monto", "presupuesto_total",
         "gasto_por_habitante"]},
         **{c: "int" for c in ["ranking_provincial", "ranking_pares", "victimas_homicidio_ultimo_anio", "señales_control",
-                              "empleados_municipales"]}},
+                              "empleados_municipales", "cargos_presupuestados"]}},
     C.F_ALERTAS: {"variacion_absoluta": "dec", "variacion_relativa_pct": "dec"},
 }
 RE_NUM = {"dec": re.compile(r"-?\d+(,\d+)?"), "int": re.compile(r"-?\d+")}
@@ -145,9 +145,19 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
                     and (f["municipio_id"], c) not in fuentes_por_campo:
                 err.append(f"{C.F_INDICADORES} {f['municipio_id']}: '{c}' sin fila de trazabilidad en 05")
     for f in m:  # datos de la ficha en 01 también requieren trazabilidad
-        for c in ("intendente_nombre_completo", "intendente_condicion", "partido_politico", "frente_electoral", "fecha_asuncion", "poblacion_2022"):
+        for c in ("intendente_nombre_completo", "intendente_nombre", "intendente_apellido", "intendente_condicion", "partido_politico", "frente_electoral", "fecha_asuncion", "poblacion_2022"):
             if f.get(c) and (f["municipio_id"], c) not in fuentes_por_campo:
                 err.append(f"{C.F_MUNICIPIOS} {f['municipio_id']}: '{c}' sin fila de trazabilidad en 05")
+    for f in m:  # nombre + apellido deben reconstruir el nombre completo original
+        if f.get("intendente_nombre") and f.get("intendente_apellido") and \
+                f"{f['intendente_nombre']} {f['intendente_apellido']}" != f.get("intendente_nombre_completo"):
+            adv.append(f"{f['municipio_id']}: nombre+apellido no reconstruyen intendente_nombre_completo (¿override manual?)")
+    codigos = [m_["indec_codigo"] for m_ in C.cargar_municipios_cfg() if m_.get("indec_codigo")]
+    for cod in codigos:
+        if not re.fullmatch(r"06\d{3}", cod):
+            err.append(f"config/municipios_amba.csv: indec_codigo inválido '{cod}'")
+    if len(codigos) != len(set(codigos)):
+        err.append("config/municipios_amba.csv: indec_codigo duplicado")
     for f in datos.get(C.F_ALERTAS, []):
         if f["severidad"] not in C.SEVERIDADES:
             err.append(f"{C.F_ALERTAS} {f['alerta_id']}: severidad inválida")

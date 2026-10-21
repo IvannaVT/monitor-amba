@@ -19,6 +19,7 @@ DIR_HISTORICO = RAIZ / "data" / "historico"
 DIR_CONFIG = RAIZ / "config"
 ARCHIVO_MUNICIPIOS_CFG = DIR_CONFIG / "municipios_amba.csv"
 ARCHIVO_REGLAS = DIR_CONFIG / "reglas_alertas.json"
+ARCHIVO_NOMBRES = DIR_CONFIG / "intendentes_nombres.csv"
 
 F_MUNICIPIOS = "01_amba_municipios.csv"
 F_BLOQUES = "02_amba_concejos_bloques.csv"
@@ -69,7 +70,7 @@ ESQUEMAS: dict[str, list[str]] = {
         "cobertura_agua_pct, cobertura_cloacas_pct, cobertura_gas_pct, control_puntaje, "
         "ultimo_fallo_htc, ejercicio_fallo_htc, señales_control, cargos_htc_monto, "
         "multas_htc_monto, presupuesto_total, presupuesto_anio, gasto_por_habitante, "
-        "gasto_periodo, empleados_municipales, tipo_dato_empleo, empleo_periodo, url_fuente"
+        "gasto_periodo, empleados_municipales, cargos_presupuestados, tipo_dato_empleo, empleo_periodo, url_fuente"
     ),
     F_FUENTES: _c(
         "fuente_id, municipio_id, entidad, campo_verificado, valor_obtenido, fuente_tipo, "
@@ -213,6 +214,32 @@ def escribir_csv(ruta: Path, filas: list[dict], columnas: list[str]) -> None:
     Path(ruta).parent.mkdir(parents=True, exist_ok=True)
     with open(ruta, "w", encoding="utf-8-sig", newline="") as f:
         f.write(serializar_csv(filas, columnas))
+
+
+_PARTICULAS = {"de", "del", "la", "las", "los", "y", "e", "da", "das", "do", "dos", "di", "van", "von", "san", "santa", "mc", "mac"}
+
+
+def cargar_nombres_override(ruta: Path = ARCHIVO_NOMBRES) -> dict[str, tuple[str, str]]:
+    """Separaciones revisadas a mano: nombre completo exacto -> (nombre, apellido)."""
+    return {r["nombre_completo"].strip(): (r["nombre"].strip(), r["apellido"].strip())
+            for r in leer_csv(ruta) if r.get("nombre_completo") and r.get("nombre") and r.get("apellido")}
+
+
+def separar_nombre(completo: str, overrides: dict[str, tuple[str, str]] | None = None) -> tuple[str, str, str]:
+    """(nombre, apellido, método). Conservador: solo separa cuando no hay ambigüedad.
+
+    - 'override_config': figura en config/intendentes_nombres.csv (revisado a mano).
+    - 'dos_palabras': exactamente dos palabras sin partículas, guiones, apóstrofos ni puntos.
+    - 'no_separado': 3+ palabras, partículas (de, del, la...) u otra ambigüedad -> se deja vacío.
+    El nombre completo original nunca se modifica.
+    """
+    c = " ".join((completo or "").split())
+    if overrides and c in overrides:
+        return overrides[c][0], overrides[c][1], "override_config"
+    p = c.split(" ")
+    if len(p) == 2 and not any(x.lower().strip(".") in _PARTICULAS or re.search(r"[-'’.]", x) for x in p):
+        return p[0], p[1], "dos_palabras"
+    return "", "", "no_separado"
 
 
 def cargar_municipios_cfg(ruta: Path = ARCHIVO_MUNICIPIOS_CFG) -> list[dict[str, str]]:

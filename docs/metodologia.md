@@ -45,3 +45,9 @@ Umbral 10 puntos (escala 0-100) → MEDIA; ≥ 20 → ALTA. Cambio de semáforo 
 
 ## Fuera de alcance de la Fase 1
 Fuentes políticas oficiales (intendentes, HCD, contactos), CABA, matriz integrada, tablero, programación semanal, versión de metodología por captura en 04.
+
+## Capa II: ampliación a los 40 municipios
+1. **URL de fichas.** Solo están confirmadas las 3 de prueba. `scripts/descubrir_urls.py` (workflow: `accion=descubrir_urls`) reúne enlaces `/m/<slug>/` de la portada, de `/ranking/` y de los sitemaps declarados en `robots.txt`; nunca deduce rutas. Cada candidata se confirma con HTTP 200 y título igual al municipio; si no, queda como incidencia (`URL_NO_ENCONTRADA`, `TITULO_NO_COINCIDE`, `PAGINA_AUSENTE`...). `--aplicar` completa `config/municipios_amba.csv` solo con lo verificado y sin pisar valores; el archivo se descarga como artefacto y se commitea a mano.
+2. **Extracción completa.** `accion=extraer`, `modo=completo` (`--municipios todos`). Mismo parser validado; los municipios sin URL verificada generan `PAGINA_NO_ENCONTRADA` y quedan en blanco. No hay programación semanal ni commit automático (`confirmar_cambios=false` por defecto).
+3. **Cambio de intendente.** Si cambia `intendente_nombre_completo`, los datos de esa persona (nombre, apellido, condición, asunción, partido, frente, coalición) se reemplazan en bloque, aun por vacíos, para no heredar los de la gestión anterior. Se genera la alerta `CAMBIO_INTENDENTE`.
+4. **Cambio de esquema.** Si el encabezado de un CSV cambia, el archivo se migra y la versión previa se conserva en `data/historico/AAAA-MM-DD/`.

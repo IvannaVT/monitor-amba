@@ -310,7 +310,8 @@ def _inc_respuesta(mid, r: Respuesta, fecha, snap, campo="pagina_municipio"):
                        url_segura(r.url), url_segura(r.url_final or ""))
 
 
-def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, snap: str, dir_diag: Path | None = None) -> dict:
+def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, snap: str, dir_diag: Path | None = None,
+                       nombres: dict | None = None) -> dict:
     """Prioridad: URL configurada. El descubrimiento por portada es respaldo (si no hay URL o da 404/410)."""
     mid, nombre = cfg["municipio_id"], cfg["municipio"]
     out = {"indicadores": None, "municipio": None, "fuentes": [], "incidencias": [], "estado": "SIN_DATOS",
@@ -367,10 +368,12 @@ def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, s
         obs = f"etiqueta='{d['etiqueta']}'; seccion='{d['seccion']}'; html_sha256={r.sha256[:16]}"
         if en_01 and campo != "poblacion_2022" and campo != "seccion_electoral":
             obs += "; dato político tomado del portal, pendiente de verificación en fuente oficial"
+        if campo == "indec_codigo":
+            obs += "; código publicado por el portal (metadatos), NO verificado contra el nomenclador oficial del INDEC"
         if d.get("obs"):
             obs += "; " + d["obs"]
         out["fuentes"].append(_fuente(
-            mid, "municipio_portal" if en_01 else "indicador_portal", campo, d["original"], url, fecha, snap,
+            mid, "municipio_portal" if en_01 or campo == "indec_codigo" else "indicador_portal", campo, d["original"], url, fecha, snap,
             "html_secciones_etiqueta_valor", d.get("confianza", "MEDIO"), obs=obs))
     for c in contradicciones:
         out["incidencias"].append(_incidencia(
@@ -380,6 +383,20 @@ def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, s
     for campo in CAMPOS_EN_01:
         if campo in fila04:
             fila01[campo] = fila04[campo]
+    if nc := fila01.get("intendente_nombre_completo"):  # separación conservadora; el nombre completo no se toca
+        nom, ape, met = C.separar_nombre(nc, nombres)
+        fila01["intendente_nombre"], fila01["intendente_apellido"] = nom, ape
+        hn = hallados["intendente_nombre_completo"]
+        conf = hn.get("confianza", "MEDIO")
+        if met == "no_separado":
+            out["incidencias"].append(_incidencia(
+                mid, "intendente_nombre;intendente_apellido", "NOMBRE_NO_SEPARADO",
+                f"'{nc}' tiene 3+ palabras o partículas: no se divide automáticamente (ambiguo).", url, fecha, snap, "BAJO",
+                "Agregar la fila en config/intendentes_nombres.csv tras revisión manual.", url))
+        else:
+            for c2, v2 in (("intendente_nombre", nom), ("intendente_apellido", ape)):
+                out["fuentes"].append(_fuente(mid, "municipio_portal", c2, v2, url, fecha, snap, f"separacion_{met}", conf,
+                                              obs=f"etiqueta='{hn['etiqueta']}'; seccion='{hn['seccion']}'; derivado de '{nc}' (nombre completo original conservado)"))
     faltan = [c for c in CAMPOS_PORTAL if c not in hallados]
     faltan_01 = [c for c in CAMPOS_FICHA_01 if c not in hallados and c not in ("coalicion_actual", "intendente_condicion")]
     n_hallados = len([c for c in hallados if c != "fecha_actualizacion_portal"])
@@ -436,6 +453,7 @@ def ejecutar(municipios: str, fecha: str | None = None, pausa: float = 2.0, clie
     cli = cliente or Cliente(pausa=pausa)
 
     desc = Descubridor(cli)
+    nombres = C.cargar_nombres_override()
 
     # 2) Metodología (una vez por ejecución).
     fuentes_extra, incid_extra = [], []
@@ -458,7 +476,7 @@ def ejecutar(municipios: str, fecha: str | None = None, pausa: float = 2.0, clie
         incid_extra.append(_inc_respuesta("GLOBAL", rm, fecha, snap, "metodologia"))
 
     # 3) Municipios.
-    resultados = [procesar_municipio(cli, c, desc, fecha, snap, dir_diagnostico) for c in sel]
+    resultados = [procesar_municipio(cli, c, desc, fecha, snap, dir_diagnostico, nombres) for c in sel]
     resumen = N.aplicar(resultados, fuentes_extra, incid_extra, fecha, snap,
                         ids_procesados=[c["municipio_id"] for c in sel],
                         dir_actual=dir_actual or C.DIR_ACTUAL, dir_historico=dir_historico or C.DIR_HISTORICO)

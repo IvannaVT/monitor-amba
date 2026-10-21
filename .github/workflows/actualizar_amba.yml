@@ -5,6 +5,15 @@ name: Actualizar MONITOR AMBA
 on:
   workflow_dispatch:
     inputs:
+      accion:
+        description: "descubrir_urls = solo descubre y verifica las URL de las fichas (no extrae); extraer = extracción"
+        type: choice
+        options: [extraer, descubrir_urls]
+        default: extraer
+      descubrir_antes:
+        description: "Con acción=extraer: descubrir/verificar URL primero (usa lo verificado en esta ejecución, sin commitear config)"
+        type: boolean
+        default: false
       modo:
         description: "prueba = municipios indicados; completo = los 40"
         type: choice
@@ -35,6 +44,8 @@ jobs:
     permissions:
       contents: write   # solo se usa si confirmar_cambios=true
     env:
+      ACCION: ${{ inputs.accion }}
+      DESCUBRIR_ANTES: ${{ inputs.descubrir_antes }}
       MODO: ${{ inputs.modo }}
       MUNICIPIOS: ${{ inputs.municipios }}
     steps:
@@ -48,13 +59,25 @@ jobs:
       - name: Pruebas unitarias (offline, datos sintéticos)
         run: python -m pytest -q
 
-      - name: Extraer (respeta robots.txt; sin evasión de bloqueos)
+      - name: Selección de municipios
         run: |
           if [ "$MODO" = "completo" ]; then SEL="todos"; else SEL="$MUNICIPIOS"; fi
           if ! printf '%s' "$SEL" | grep -Eq '^[A-Za-z0-9_ áéíóúÁÉÍÓÚñÑ,.]+$'; then echo "Selección inválida"; exit 1; fi
+          echo "SEL=$SEL" >> "$GITHUB_ENV"
+
+      - name: Descubrir y verificar URL de fichas (solo enlaces/sitemaps reales; no commitea)
+        if: ${{ inputs.accion == 'descubrir_urls' || inputs.descubrir_antes }}
+        run: |
+          python scripts/descubrir_urls.py --municipios "$SEL" --aplicar --salida diagnostico
+          cat diagnostico/descubrimiento_urls.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Extraer (respeta robots.txt; sin evasión de bloqueos)
+        if: ${{ inputs.accion != 'descubrir_urls' }}
+        run: |
           python scripts/extraer.py --municipios "$SEL" --informe-ejecucion informe_ejecucion.md --diagnostico diagnostico | tee extraccion.json
 
       - name: Validar CSV e informe de cobertura
+        if: ${{ inputs.accion != 'descubrir_urls' }}
         run: python scripts/validar.py --modo "$MODO" --informe docs/informe_calidad.md
 
       - name: Resumen de incidencias
@@ -74,14 +97,15 @@ jobs:
         with:
           name: monitor-amba-datos
           path: |
+            config/municipios_amba.csv
             data/
             docs/informe_calidad.md
             extraccion.json
             informe_ejecucion.md
             diagnostico/
 
-      - name: Commit solo si hay cambios reales
-        if: ${{ inputs.confirmar_cambios }}
+      - name: Commit solo si hay cambios reales (config/ nunca se commitea desde aquí)
+        if: ${{ inputs.confirmar_cambios && inputs.accion == 'extraer' }}
         run: |
           git config user.name "monitor-amba-bot"
           git config user.email "monitor-amba-bot@users.noreply.github.com"
