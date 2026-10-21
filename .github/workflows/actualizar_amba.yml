@@ -1,0 +1,88 @@
+name: Actualizar MONITOR AMBA
+
+# Fase 1: solo ejecución manual. La programación semanal se activará después de validar
+# el funcionamiento completo (ver bloque comentado al final de `on:`).
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "prueba = municipios indicados; completo = los 40"
+        type: choice
+        options: [prueba, completo]
+        default: prueba
+      municipios:
+        description: "Solo modo prueba: ids o nombres separados por coma"
+        type: string
+        default: "avellaneda,vicente_lopez,tres_de_febrero"
+      confirmar_cambios:
+        description: "Si es true, commitea los CSV a la rama ejecutada (solo si hubo cambios)"
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: "0 12 * * 3"   # miércoles 09:00 America/Argentina/Buenos_Aires (UTC-3). NO ACTIVAR aún.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actualizar-amba
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write   # solo se usa si confirmar_cambios=true
+    env:
+      MODO: ${{ inputs.modo }}
+      MUNICIPIOS: ${{ inputs.municipios }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Pruebas unitarias (offline, datos sintéticos)
+        run: python -m pytest -q
+
+      - name: Extraer (respeta robots.txt; sin evasión de bloqueos)
+        run: |
+          if [ "$MODO" = "completo" ]; then SEL="todos"; else SEL="$MUNICIPIOS"; fi
+          if ! printf '%s' "$SEL" | grep -Eq '^[A-Za-z0-9_ áéíóúÁÉÍÓÚñÑ,.]+$'; then echo "Selección inválida"; exit 1; fi
+          python scripts/extraer.py --municipios "$SEL" | tee extraccion.json
+
+      - name: Validar CSV e informe de cobertura
+        run: python scripts/validar.py --modo "$MODO" --informe docs/informe_calidad.md
+
+      - name: Resumen de incidencias
+        if: always()
+        run: |
+          echo "### Incidencias abiertas" >> "$GITHUB_STEP_SUMMARY"
+          python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import csv, collections
+          f = list(csv.DictReader(open("data/actual/06_amba_incidencias.csv", encoding="utf-8-sig"), delimiter=";"))
+          c = collections.Counter(r["tipo_incidencia"] for r in f if r["estado_resolucion"] == "ABIERTA")
+          print("\n".join(f"- `{k}`: {v}" for k, v in c.most_common()) or "- ninguna")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monitor-amba-datos
+          path: |
+            data/
+            docs/informe_calidad.md
+            extraccion.json
+
+      - name: Commit solo si hay cambios reales
+        if: ${{ inputs.confirmar_cambios }}
+        run: |
+          git config user.name "monitor-amba-bot"
+          git config user.email "monitor-amba-bot@users.noreply.github.com"
+          git add data docs/informe_calidad.md
+          if git diff --cached --quiet; then echo "Sin cambios reales; no se commitea."; exit 0; fi
+          git commit -m "datos: actualización MONITOR AMBA ($MODO)"
+          git push

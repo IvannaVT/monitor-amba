@@ -1,0 +1,24 @@
+{
+  "_nota": "Reglas documentadas y configurables (spec sec. 13). La severidad es prioridad de seguimiento, no una determinación de responsabilidad legal.",
+  "umbral_variacion_absoluta": 10,
+  "umbral_alta_multiplo": 2,
+  "umbral_ranking_posiciones": 10,
+  "variables_numericas_0_100": {
+    "indice_global": "Índice municipal general",
+    "transparencia_puntaje": "Transparencia",
+    "servicios_seguridad_puntaje": "Servicios y seguridad",
+    "seguridad_puntaje": "Seguridad",
+    "control_puntaje": "Control externo y judicial"
+  },
+  "variables_ranking": ["ranking_provincial", "ranking_pares"],
+  "variables_semaforo": {"transparencia_semaforo": "ALTA"},
+  "variables_politicas": {
+    "intendente_nombre_completo": {"categoria": "CAMBIO_INTENDENTE", "severidad": "CRITICA"},
+    "intendente_condicion": {"categoria": "CAMBIO_CONDICION_INTENDENTE", "severidad": "ALTA"},
+    "coalicion_actual": {"categoria": "CAMBIO_COALICION", "severidad": "ALTA"},
+    "partido_politico": {"categoria": "CAMBIO_PARTIDO", "severidad": "ALTA"},
+    "presidente_hcd": {"categoria": "CAMBIO_AUTORIDADES_CONCEJO", "severidad": "MEDIA"},
+    "situacion_legislativa": {"categoria": "CAMBIO_SITUACION_LEGISLATIVA", "severidad": "ALTA"}
+  },
+  "metodologia": {"categoria": "CAMBIO_METODOLOGICO", "severidad": "ALTA"}
+}
