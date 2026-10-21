@@ -292,5 +292,5 @@ def test_workflow_de_contactos_separado_manual_y_sin_commit_por_defecto():
 def test_sitios_oficiales_config():
     cfg = list(csv.DictReader(open(K.SITIOS, encoding="utf-8-sig"), delimiter=";"))
     assert len(cfg) == 40 and {r["municipio_id"] for r in cfg} == {m["municipio_id"] for m in C.cargar_municipios_cfg()}
-    assert all(r["estado"] in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "CONFIRMADO") for r in cfg)
+    assert all(r["estado"] in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "VERIFICADO_TECNICAMENTE", "CONFIRMADO") for r in cfg)
     assert all(r["sitio_oficial"].startswith("https://") for r in cfg if r["sitio_oficial"])

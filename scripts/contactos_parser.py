@@ -30,7 +30,7 @@ DEPENDENCIAS = [
     dict(clave="privada", dependencia="Secretaría Privada del Intendente", organismo="MUNICIPALIDAD", tipo="DESPACHO",
          frases=["secretaria privada"]),
     dict(clave="despacho", dependencia="Despacho del Intendente / Jefatura de Gabinete", organismo="MUNICIPALIDAD", tipo="DESPACHO",
-         frases=["despacho del intendente", "despacho de la intendenta", "jefatura de gabinete", "jefe de gabinete", "jefa de gabinete"]),
+         frases=["despacho del intendente", "despacho de la intendenta", "intendencia", "jefatura de gabinete", "jefe de gabinete", "jefa de gabinete"]),
     dict(clave="hcd_presidencia", dependencia="Presidencia del Concejo Deliberante", organismo="HCD", tipo="CONCEJO",
          frases=["presidencia del honorable concejo deliberante", "presidencia del concejo deliberante", "presidencia del hcd", "presidencia hcd"]),
     dict(clave="hcd_secretaria", dependencia="Secretaría del Concejo Deliberante", organismo="HCD", tipo="CONCEJO",
@@ -449,6 +449,18 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
                 general[k] = general[k] or c[k]
             for k, v in c["omitidos"].items():
                 general["omitidos"][k] = general["omitidos"].get(k, 0) + v
+    # Respaldo: sin zonas de contacto reconocibles, en portada o página de contacto se toman los canales institucionales del cuerpo
+    # que no pertenezcan a ninguna dependencia; queda marcado (`fallback`) para auditarlo.
+    if general is None and soup.body and (urlparse(url).path in ("", "/") or re.search(r"contact", urlparse(url).path, re.I)):
+        atribuidos = {e for h in hallazgos for e in h.get("emails", [])} | {_digitos(t) for h in hallazgos for t in h.get("telefonos", [])}
+        c = _canales(soup.body, url, bases, general=True)
+        c["emails"] = [e for e in c["emails"] if e not in atribuidos]
+        c["telefonos"] = [t for t in c["telefonos"] if _digitos(t) not in atribuidos]
+        if _hay_canal(c):
+            ancla = next((a_ for a_ in soup.body.find_all("a", href=re.compile(r"^(mailto|tel):", re.I))), None)
+            ctx = ancla.parent if ancla is not None and ancla.parent is not None else soup.body
+            general = dict(c, clave="contacto_general", etiqueta="Contacto general (respaldo: canales del cuerpo sin dependencia)", url=url,
+                           con_canal=True, fallback=True, evidencia=_texto_seguro_str(ctx.get_text("\n", strip=True), bases, 200))
     fecha = ""
     if m := RE_ACTUALIZADO.search(soup.get_text(" ", strip=True)):
         fecha = P.parse_fecha(m.group(1)) or ""

@@ -6,16 +6,20 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: "prueba = municipios indicados; completo = los 40 con sitio oficial configurado"
+        description: "prueba = municipios indicados; intermedia = muestra de 8; completo = los 40"
         type: choice
-        options: [prueba, completo]
+        options: [prueba, intermedia, completo]
         default: prueba
+      descubrir_sitios:
+        description: "Descubrir/verificar antes el sitio oficial de los municipios sin configurar (solo en esta ejecución; no se commitea config/)"
+        type: boolean
+        default: true
       municipios:
         description: "Solo modo prueba: ids o nombres separados por coma"
         type: string
         default: "avellaneda,vicente_lopez,tres_de_febrero"
       confirmar_cambios:
-        description: "Si es true, commitea 03/05/06/08 a la rama ejecutada (solo si hubo cambios)"
+        description: "Si es true, commitea 03/05/06/08 a la rama ejecutada (solo si hubo cambios). NUNCA en main: los resultados deben auditarse antes."
         type: boolean
         default: false
 
@@ -46,11 +50,18 @@ jobs:
       - name: Pruebas unitarias (offline, datos sintéticos)
         run: python -m pytest -q
 
-      - name: Relevar contactos (robots.txt, pausa de 2 s, solo sitios oficiales configurados)
+      - name: Selección de municipios
         run: |
-          if [ "$MODO" = "completo" ]; then SEL="todos"; else SEL="$MUNICIPIOS"; fi
+          case "$MODO" in completo) SEL="todos";; intermedia) SEL="intermedia";; *) SEL="$MUNICIPIOS";; esac
           if ! printf '%s' "$SEL" | grep -Eq '^[A-Za-z0-9_ áéíóúÁÉÍÓÚñÑ,.]+$'; then echo "Selección inválida"; exit 1; fi
-          python scripts/contactos.py --municipios "$SEL" --informe docs/informe_contactos.md --diagnostico diagnostico_contactos | tee contactos.json
+          echo "SEL=$SEL" >> "$GITHUB_ENV"
+
+      - name: Descubrir y verificar sitios oficiales (enlaces de las fichas; sin deducir dominios; no commitea)
+        if: ${{ inputs.descubrir_sitios }}
+        run: python scripts/descubrir_sitios.py --municipios "$SEL" --aplicar --salida diagnostico_contactos
+
+      - name: Relevar contactos (robots.txt y TLS verificados, pausa de 2 s, solo sitios configurados o verificados)
+        run: python scripts/contactos.py --municipios "$SEL" --informe docs/informe_contactos.md --diagnostico diagnostico_contactos | tee contactos.json
 
       - name: Validar CSV
         run: python scripts/validar.py --modo prueba
@@ -71,13 +82,14 @@ jobs:
         with:
           name: monitor-amba-contactos
           path: |
+            config/sitios_oficiales.csv
             data/
             docs/informe_contactos.md
             contactos.json
             diagnostico_contactos/
 
-      - name: Commit solo si hay cambios reales
-        if: ${{ inputs.confirmar_cambios }}
+      - name: Commit solo si hay cambios reales y NO es main (config/ nunca se commitea desde aquí)
+        if: ${{ inputs.confirmar_cambios && github.ref_name != 'main' }}
         run: |
           git config user.name "monitor-amba-bot"
           git config user.email "monitor-amba-bot@users.noreply.github.com"
