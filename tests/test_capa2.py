@@ -40,7 +40,8 @@ def sesion_descubrimiento():
 
 def cfg_tmp(tmp_path, ids):
     todos = C.cargar_municipios_cfg()
-    filas = [dict(m, url_portal_municipio="") for m in todos if m["municipio_id"] in ids]
+    # Se parte de una config SIN URL ni INDEC para probar el descubrimiento de forma aislada del config real (40 verificadas).
+    filas = [dict(m, url_portal_municipio="", indec_codigo="", indec_fuente="") for m in todos if m["municipio_id"] in ids]
     ruta = tmp_path / "cfg.csv"
     with open(ruta, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(todos[0].keys()), delimiter=";", lineterminator="\n")
@@ -159,12 +160,25 @@ def test_migracion_de_encabezado_conserva_la_version_previa(dirs):
     assert (dirs[1] / "2026-10-28" / C.F_INDICADORES).exists() is False     # sin filas previas no hay nada que archivar
 
 
-def test_modo_completo_40_municipios_valida_y_registra_incidencias(dirs):
+def cfg_solo_piloto(tmp_path):
+    """Config de 40 municipios con URL únicamente en los 3 pilotos (los demás sin URL), derivada del config real."""
+    todos = C.cargar_municipios_cfg()
+    piloto = {"ba_avellaneda", "ba_vicente_lopez", "ba_tres_de_febrero"}
+    filas = [dict(m, url_portal_municipio=m["url_portal_municipio"] if m["municipio_id"] in piloto else "") for m in todos]
+    ruta = tmp_path / "cfg_piloto.csv"
+    with open(ruta, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(todos[0].keys()), delimiter=";", lineterminator="\n")
+        w.writeheader(); w.writerows(filas)
+    return ruta
+
+
+def test_modo_completo_40_municipios_valida_y_registra_incidencias(dirs, tmp_path):
     pag = paginas()
     for slug in ("avellaneda", "vicente-lopez", "tres-de-febrero"):
         pag[f"{BASE}/m/{slug}/"] = R(text=leer("ficha_ref_a.html"))
     ses = FakeSession(pag)
-    res = E.ejecutar("todos", "2026-10-21", cliente=E.Cliente(pausa=0, session=ses), dir_actual=dirs[0], dir_historico=dirs[1])
+    res = E.ejecutar("todos", "2026-10-21", cliente=E.Cliente(pausa=0, session=ses), dir_actual=dirs[0], dir_historico=dirs[1],
+                     cfg_path=cfg_solo_piloto(tmp_path))
     assert len(res["municipios"]) == 40 and res["municipios_con_datos"] == 3
     assert len(C.leer_csv(dirs[0] / C.F_MUNICIPIOS)) == 40
     assert ses.pedidos.count(BASE + "/") == 1                                # la portada se consulta una sola vez
@@ -179,3 +193,20 @@ def test_workflow_manual_sin_programacion_ni_commit_automatico():
     assert "workflow_dispatch" in wf and "descubrir_urls" in wf and "completo" in wf
     assert "\n  schedule:" not in wf and "# schedule:" in wf
     assert "confirmar_cambios" in wf and "default: false" in wf.split("confirmar_cambios:")[1][:200]
+
+
+def test_modo_completo_con_las_40_url_verificadas_del_config_real(dirs):
+    """Config real (40 URL verificadas): no se consulta la portada, no hay PAGINA_NO_ENCONTRADA y valida en modo completo."""
+    cfg = C.cargar_municipios_cfg()
+    pag = {BASE + "/metodologia/": R(text=leer("metodologia_prueba.html"))}
+    for m in cfg:
+        pag[m["url_portal_municipio"]] = R(text=leer("ficha_ref_a.html"))
+    ses = FakeSession(pag)
+    res = E.ejecutar("todos", "2026-10-21", cliente=E.Cliente(pausa=0, session=ses), dir_actual=dirs[0], dir_historico=dirs[1])
+    assert len(res["municipios"]) == 40 and res["municipios_con_datos"] == 40
+    assert BASE + "/" not in ses.pedidos                                       # con URL configurada no hace falta la portada
+    assert sorted(p for p in ses.pedidos if "/m/" in p) == sorted(m["url_portal_municipio"] for m in cfg)   # una solicitud por ficha
+    assert not any(i["tipo_incidencia"] == "PAGINA_NO_ENCONTRADA" for i in C.leer_csv(dirs[0] / C.F_INCIDENCIAS))
+    assert len(C.leer_csv(dirs[0] / C.F_MUNICIPIOS)) == 40 and len(C.leer_csv(dirs[0] / C.F_INDICADORES)) == 40
+    err, _, _ = V.validar(dirs[0], "completo")
+    assert err == [], err
