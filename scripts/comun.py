@@ -58,7 +58,7 @@ ESQUEMAS: dict[str, list[str]] = {
         "municipio_id, organismo, dependencia, tipo_contacto, responsable_nombre, "
         "responsable_apellido, cargo, email_institucional, telefono_institucional, interno, "
         "direccion, horario_atencion, sitio_web, url_fuente, fecha_verificacion, "
-        "estado_contacto, snapshot_id"
+        "estado_contacto, snapshot_id, responsable_nombre_completo, fecha_consulta, evidencia"
     ),
     F_INDICADORES: _c(
         "municipio_id, snapshot_id, fecha_extraccion, fecha_actualizacion_portal, "
@@ -118,6 +118,9 @@ SITUACIONES_LEGISLATIVAS = {
     "MAYORIA_PROPIA", "MAYORIA_CON_ALIADOS", "MINORIA", "EMPATE", "SIN_VERIFICAR",
 }
 SEVERIDADES = {"CRITICA", "ALTA", "MEDIA", "INFORMATIVA"}
+# Directorio de vinculación (03): tipo de canal y estado de la información de contacto.
+TIPOS_CONTACTO = {"ESPECIFICO_PROTOCOLO", "RELACIONES_INSTITUCIONALES", "DESPACHO", "CONCEJO", "CONTACTO_ALTERNATIVO"}
+ESTADOS_CONTACTO = {"VIGENTE_CONFIRMADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA", "DEPENDENCIA_SIN_CANAL", "NO_ENCONTRADO"}
 
 
 # ---------------------------------------------------------------- texto / ids

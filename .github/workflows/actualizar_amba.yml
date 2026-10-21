@@ -34,7 +34,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: actualizar-amba
+  group: datos-amba
   cancel-in-progress: false
 
 jobs:

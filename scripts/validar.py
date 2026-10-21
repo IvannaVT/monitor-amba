@@ -139,6 +139,10 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         if not f["fecha_consulta"]:
             err.append(f"{C.F_FUENTES} {f['fuente_id']}: sin fecha_consulta")
     fuentes_por_campo = {(f["municipio_id"], f["campo_verificado"]) for f in datos.get(C.F_FUENTES, [])}
+    contactos_traza: dict[str, set[str]] = {}   # canales de contacto (03) respaldados por una fila de 05
+    for f in datos.get(C.F_FUENTES, []):
+        if f["entidad"].startswith("contacto:") and f["campo_verificado"] in ("email_institucional", "telefono_institucional"):
+            contactos_traza.setdefault(f["municipio_id"], set()).add(f["valor_obtenido"])
     for f in datos.get(C.F_INDICADORES, []):  # todo dato debe tener trazabilidad
         for c, v in f.items():
             if v and c not in ("municipio_id", "snapshot_id", "fecha_extraccion", "url_fuente", "fecha_actualizacion_portal") \
@@ -164,6 +168,31 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
             err.append(f"config/municipios_amba.csv: indec_codigo inválido '{cod}'")
     if len(codigos) != len(set(codigos)):
         err.append("config/municipios_amba.csv: indec_codigo duplicado")
+    for i, f in enumerate(datos.get(C.F_CONTACTOS, []), 2):  # directorio de vinculación (03)
+        ref = f"{C.F_CONTACTOS}:{i}"
+        if f["estado_contacto"] not in C.ESTADOS_CONTACTO:
+            err.append(f"{ref}: estado_contacto inválido '{f['estado_contacto']}'")
+        if f["tipo_contacto"] not in C.TIPOS_CONTACTO:
+            err.append(f"{ref}: tipo_contacto inválido '{f['tipo_contacto']}'")
+        for e_ in filter(None, (x.strip() for x in f["email_institucional"].split(";"))):
+            if not re.fullmatch(r"[a-z0-9._%+\-]+@[a-z0-9\-]+(\.[a-z0-9\-]+)*\.[a-z]{2,}", e_):
+                err.append(f"{ref}: correo inválido '{e_}'")
+            elif not (e_.endswith((".gob.ar", ".gov.ar")) or e_.split("@")[1] in {u.split("/")[2].removeprefix("www.") for u in [f["url_fuente"], f["sitio_web"]] if u.startswith("http")}):
+                err.append(f"{ref}: correo de dominio no institucional '{e_}'")
+            elif e_ not in contactos_traza.get(f["municipio_id"], set()):
+                err.append(f"{ref}: correo '{e_}' sin fila de trazabilidad en 05")
+        for t_ in filter(None, (x.strip() for x in f["telefono_institucional"].split(";"))):
+            if not (6 <= len(re.sub(r"\D", "", t_)) <= 13) or re.search(r"[A-Za-z]", t_):
+                err.append(f"{ref}: teléfono inválido '{t_}'")
+            elif t_ not in contactos_traza.get(f["municipio_id"], set()):
+                err.append(f"{ref}: teléfono '{t_}' sin fila de trazabilidad en 05")
+        for u_ in (f["url_fuente"], f["sitio_web"]):
+            if u_ and not u_.startswith(("http://", "https://")):
+                err.append(f"{ref}: URL no completa '{u_}'")
+        if f["estado_contacto"] in ("VIGENTE_CONFIRMADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA") and not (f["email_institucional"] or f["telefono_institucional"]):
+            err.append(f"{ref}: estado '{f['estado_contacto']}' sin ningún canal")
+        if f["estado_contacto"] in ("NO_ENCONTRADO", "DEPENDENCIA_SIN_CANAL") and (f["email_institucional"] or f["telefono_institucional"]):
+            err.append(f"{ref}: estado '{f['estado_contacto']}' con canal registrado")
     for f in datos.get(C.F_ALERTAS, []):
         if f["severidad"] not in C.SEVERIDADES:
             err.append(f"{C.F_ALERTAS} {f['alerta_id']}: severidad inválida")
