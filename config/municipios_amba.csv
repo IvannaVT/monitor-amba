@@ -1,41 +1,41 @@
-﻿municipio_id;municipio;indec_codigo;seccion_electoral;url_portal_municipio;indec_fuente
-ba_almirante_brown;Almirante Brown;;;;
-ba_avellaneda;Avellaneda;;;https://municipiosargentinos.net/m/avellaneda/;
-ba_berazategui;Berazategui;;;;
-ba_berisso;Berisso;;;;
-ba_brandsen;Brandsen;;;;
-ba_campana;Campana;;;;
-ba_canuelas;Cañuelas;;;;
-ba_ensenada;Ensenada;;;;
-ba_escobar;Escobar;;;;
-ba_esteban_echeverria;Esteban Echeverría;;;;
-ba_exaltacion_de_la_cruz;Exaltación de la Cruz;;;;
-ba_ezeiza;Ezeiza;;;;
-ba_florencio_varela;Florencio Varela;;;;
-ba_general_las_heras;General Las Heras;;;;
-ba_general_rodriguez;General Rodríguez;;;;
-ba_general_san_martin;General San Martín;;;;
-ba_hurlingham;Hurlingham;;;;
-ba_ituzaingo;Ituzaingó;;;;
-ba_jose_c_paz;José C. Paz;;;;
-ba_la_matanza;La Matanza;;;;
-ba_la_plata;La Plata;;;;
-ba_lanus;Lanús;;;;
-ba_lomas_de_zamora;Lomas de Zamora;;;;
-ba_lujan;Luján;;;;
-ba_malvinas_argentinas;Malvinas Argentinas;;;;
-ba_marcos_paz;Marcos Paz;;;;
-ba_merlo;Merlo;;;;
-ba_moreno;Moreno;;;;
-ba_moron;Morón;;;;
-ba_pilar;Pilar;;;;
-ba_presidente_peron;Presidente Perón;;;;
-ba_quilmes;Quilmes;;;;
-ba_san_fernando;San Fernando;;;;
-ba_san_isidro;San Isidro;;;;
-ba_san_miguel;San Miguel;;;;
-ba_san_vicente;San Vicente;;;;
-ba_tigre;Tigre;;;;
-ba_tres_de_febrero;Tres de Febrero;;;https://municipiosargentinos.net/m/tres-de-febrero/;
-ba_vicente_lopez;Vicente López;;;https://municipiosargentinos.net/m/vicente-lopez/;
-ba_zarate;Zárate;;;;
+municipio_id;municipio;indec_codigo;seccion_electoral;url_portal_municipio;indec_fuente
+ba_almirante_brown;Almirante Brown;06028;;https://municipiosargentinos.net/m/almirante-brown/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_avellaneda;Avellaneda;06035;;https://municipiosargentinos.net/m/avellaneda/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_berazategui;Berazategui;06091;;https://municipiosargentinos.net/m/berazategui/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_berisso;Berisso;06098;;https://municipiosargentinos.net/m/berisso/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_brandsen;Brandsen;06119;;https://municipiosargentinos.net/m/brandsen/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_campana;Campana;06126;;https://municipiosargentinos.net/m/campana/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_canuelas;Cañuelas;06134;;https://municipiosargentinos.net/m/canuelas/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_ensenada;Ensenada;06245;;https://municipiosargentinos.net/m/ensenada/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_escobar;Escobar;06252;;https://municipiosargentinos.net/m/escobar/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_esteban_echeverria;Esteban Echeverría;06260;;https://municipiosargentinos.net/m/esteban-echeverria/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_exaltacion_de_la_cruz;Exaltación de la Cruz;06266;;https://municipiosargentinos.net/m/exaltacion-de-la-cruz/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_ezeiza;Ezeiza;06270;;https://municipiosargentinos.net/m/ezeiza/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_florencio_varela;Florencio Varela;06274;;https://municipiosargentinos.net/m/florencio-varela/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_general_las_heras;General Las Heras;06329;;https://municipiosargentinos.net/m/general-las-heras/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_general_rodriguez;General Rodríguez;06364;;https://municipiosargentinos.net/m/general-rodriguez/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_general_san_martin;General San Martín;06371;;https://municipiosargentinos.net/m/general-san-martin/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_hurlingham;Hurlingham;06408;;https://municipiosargentinos.net/m/hurlingham/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_ituzaingo;Ituzaingó;06410;;https://municipiosargentinos.net/m/ituzaingo/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_jose_c_paz;José C. Paz;06412;;https://municipiosargentinos.net/m/jose-c-paz/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_la_matanza;La Matanza;06427;;https://municipiosargentinos.net/m/la-matanza/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_la_plata;La Plata;06441;;https://municipiosargentinos.net/m/la-plata/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_lanus;Lanús;06434;;https://municipiosargentinos.net/m/lanus/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_lomas_de_zamora;Lomas de Zamora;06490;;https://municipiosargentinos.net/m/lomas-de-zamora/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_lujan;Luján;06497;;https://municipiosargentinos.net/m/lujan/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_malvinas_argentinas;Malvinas Argentinas;06515;;https://municipiosargentinos.net/m/malvinas-argentinas/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_marcos_paz;Marcos Paz;06525;;https://municipiosargentinos.net/m/marcos-paz/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_merlo;Merlo;06539;;https://municipiosargentinos.net/m/merlo/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_moreno;Moreno;06560;;https://municipiosargentinos.net/m/moreno/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_moron;Morón;06568;;https://municipiosargentinos.net/m/moron/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_pilar;Pilar;06638;;https://municipiosargentinos.net/m/pilar/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_presidente_peron;Presidente Perón;06648;;https://municipiosargentinos.net/m/presidente-peron/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_quilmes;Quilmes;06658;;https://municipiosargentinos.net/m/quilmes/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_san_fernando;San Fernando;06749;;https://municipiosargentinos.net/m/san-fernando/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_san_isidro;San Isidro;06756;;https://municipiosargentinos.net/m/san-isidro/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_san_miguel;San Miguel;06760;;https://municipiosargentinos.net/m/san-miguel/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_san_vicente;San Vicente;06778;;https://municipiosargentinos.net/m/san-vicente/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_tigre;Tigre;06805;;https://municipiosargentinos.net/m/tigre/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_tres_de_febrero;Tres de Febrero;06840;;https://municipiosargentinos.net/m/tres-de-febrero/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_vicente_lopez;Vicente López;06861;;https://municipiosargentinos.net/m/vicente-lopez/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
+ba_zarate;Zárate;06882;;https://municipiosargentinos.net/m/zarate/;"portal (metadatos de la ficha); pendiente de verificar contra el nomenclador INDEC"
