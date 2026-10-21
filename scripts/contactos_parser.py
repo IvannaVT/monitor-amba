@@ -75,8 +75,34 @@ def dominio_base(host: str) -> str:
     return (host or "").lower().removeprefix("www.")
 
 
+# Dominios de municipios HOMÓNIMOS de otras provincias (ya identificados): nunca son oficiales para el AMBA.
+DOMINIOS_HOMONIMOS = {"avellaneda.gob.ar": "Avellaneda (Santa Fe)"}
+_PROVINCIAS_AJENAS = ["santa fe", "cordoba", "mendoza", "tucuman", "salta", "jujuy", "entre rios", "corrientes", "chaco", "misiones",
+                      "la pampa", "san juan", "san luis", "rio negro", "neuquen", "chubut", "santa cruz", "tierra del fuego",
+                      "catamarca", "la rioja", "santiago del estero", "formosa"]
+_RX_PROV_BA = re.compile(r"\b(?:provincia|pcia) de (?:buenos aires|bs as)\b")
+_RX_PROV_AJENA = re.compile(r"\b(?:provincia|pcia) de (" + "|".join(_PROVINCIAS_AJENAS) + r")\b")
+
+
+def dominio_homonimo(host: str) -> str:
+    """Nombre del municipio homónimo si el host pertenece a su dominio (o a un subdominio), o ''."""
+    h = dominio_base(host)
+    return next((v for d, v in DOMINIOS_HOMONIMOS.items() if h == d or h.endswith("." + d)), "")
+
+
+def provincia_ajena(texto: str) -> str:
+    """Otra provincia nombrada como 'Provincia de X' en el texto, si no se nombra también la de Buenos Aires; si no, ''."""
+    t = norm(texto)
+    if _RX_PROV_BA.search(t):
+        return ""
+    m = _RX_PROV_AJENA.search(t)
+    return m.group(1) if m else ""
+
+
 def email_institucional(email: str, bases: set[str]) -> bool:
     dom = email.split("@", 1)[1].lower()
+    if dominio_homonimo(dom):
+        return False
     return dom.endswith((".gob.ar", ".gov.ar")) or any(dom == b or dom.endswith("." + b) for b in bases)
 
 
@@ -223,6 +249,22 @@ def _canales(nodo, url: str, bases: set[str]) -> dict:
                 responsable_original=orig, omitidos={"email_no_institucional": om_mail, "telefono_movil": om_tel})
 
 
+def texto_seguro(nodo, bases: set[str], maximo: int = 240) -> str:
+    """Texto del bloque para la evidencia SIN datos no institucionales: líneas con móvil/WhatsApp y correos de
+    dominios no institucionales se reemplazan por marcas (lo omitido no debe reaparecer en los CSV)."""
+    return _texto_seguro_str(nodo.get_text("\n", strip=True), bases, maximo)
+
+
+def _texto_seguro_str(texto: str, bases: set[str], maximo: int = 240) -> str:
+    lineas = []
+    for ln in texto.split("\n"):
+        if RE_MOVIL.search(ln):
+            ln = "[móvil/WhatsApp omitido]"
+        ln = RE_EMAIL.sub(lambda m: m.group(0) if email_institucional(m.group(0).lower(), bases) else "[correo no institucional omitido]", ln)
+        lineas.append(ln)
+    return re.sub(r"\s+", " ", " ".join(lineas))[:maximo]
+
+
 def _hay_canal(c: dict) -> bool:
     return bool(c["emails"] or c["telefonos"])
 
@@ -255,11 +297,11 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
                         bloque = nodo
                     break  # con 2+ dependencias en el bloque la atribución es ambigua: no se atribuye
                 nodo = nodo.parent
-            h = dict(clave=clave, etiqueta=txt[:120], url=url, con_canal=False, evidencia=txt[:160])
+            h = dict(clave=clave, etiqueta=txt[:120], url=url, con_canal=False, evidencia=_texto_seguro_str(txt, bases, 160))
             if bloque is not None:
                 c = _canales(bloque, url, bases)
                 if _hay_canal(c):
-                    h.update(c, con_canal=True, evidencia=re.sub(r"\s+", " ", bloque.get_text(" ", strip=True))[:240])
+                    h.update(c, con_canal=True, evidencia=texto_seguro(bloque, bases))
             hallazgos.append(h)
     # Contacto general: pie de página y bloques "contacto"; o toda la página si es una página de contacto.
     zonas = [z for z in soup.find_all(["footer"])] + [
@@ -272,7 +314,7 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
         c = _canales(z, url, bases)
         if _hay_canal(c):
             general = dict(c, clave="contacto_general", etiqueta="Contacto general (pie/página de contacto)", url=url,
-                           con_canal=True, evidencia=re.sub(r"\s+", " ", z.get_text(" ", strip=True))[:240])
+                           con_canal=True, evidencia=texto_seguro(z, bases))
             break
     fecha = ""
     if m := RE_ACTUALIZADO.search(soup.get_text(" ", strip=True)):

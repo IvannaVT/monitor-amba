@@ -65,3 +65,8 @@ Fuentes políticas oficiales (intendentes, HCD, contactos), CABA, matriz integra
 - Una redirección (301/302/303/307/308) **no es un error por sí misma**. `ClienteContactos` la sigue a mano: en cada salto verifica `robots.txt` y el certificado TLS (no se desactiva ni se reintenta) y solo la acepta si el destino es del mismo dominio (www/apex/subdominio, http→https) o un dominio listado en `dominios_verificados` de `config/sitios_oficiales.csv` (verificado a mano como oficial de ese municipio). Cualquier otro destino se rechaza como `REDIRECCION_EXTERNA` **sin solicitarlo** (p. ej. un municipio homónimo de otra provincia). Se registran código, URL final y saltos.
 - `estado=CONFIRMADO`: una persona verificó que es el sitio oficial (no se exige que el título nombre al municipio). Sin confirmar, se exige título con el nombre y dominio `gob.ar`/`gov.ar`.
 - El cliente de indicadores (`extraer.py`) no cambia.
+
+### Dominio correcto por municipio (homónimos)
+- Hay municipios homónimos en otras provincias (p. ej. `avellaneda.gob.ar` es Avellaneda, Santa Fe). `DOMINIOS_HOMONIMOS` (en `contactos_parser.py`) bloquea esos dominios aunque el sitio esté `CONFIRMADO` (`SITIO_HOMONIMO`), y también las páginas que se declaran de otra provincia ("Provincia de X" sin "Provincia de Buenos Aires"). Un homónimo no puede ser destino de redirección ni figurar en `dominios_verificados`, y sus correos no se aceptan.
+- `validar.py` revisa `config/sitios_oficiales.csv`: https, un dominio por municipio, sin homónimos, `CONFIRMADO` con fuente.
+- La evidencia que se guarda (`03.evidencia`, `05.observaciones`) se sanea: los correos no institucionales y las líneas de móvil/WhatsApp se reemplazan por una marca; lo omitido no reaparece en ningún CSV.

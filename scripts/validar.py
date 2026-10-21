@@ -162,6 +162,28 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
             err.append(f"{ref}: falta fuente_revision (sin documento de respaldo no se aplica)")
         if f"{r_.get('nombre', '')} {r_.get('apellido', '')}".split() != (r_.get("nombre_completo") or "").split():
             err.append(f"{ref}: nombre + apellido no reconstruyen el nombre completo")
+    import contactos_parser as _CP
+    hosts_sitios: dict[str, str] = {}
+    for s_ in C.leer_csv(C.ARCHIVO_SITIOS):  # sitios oficiales: https, un dominio por municipio, sin homónimos de otras provincias
+        ref = f"config/sitios_oficiales.csv {s_['municipio_id']}"
+        if s_.get("estado") not in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "CONFIRMADO"):
+            err.append(f"{ref}: estado inválido '{s_.get('estado')}'")
+        u_ = (s_.get("sitio_oficial") or "").strip()
+        if not u_:
+            continue
+        host_ = (u_.split("/")[2] if u_.count("/") >= 2 else "").lower().removeprefix("www.")
+        if not u_.startswith("https://") or not host_:
+            err.append(f"{ref}: el sitio oficial debe ser una URL https completa")
+        if _CP.dominio_homonimo(host_):
+            err.append(f"{ref}: {host_} pertenece a {_CP.dominio_homonimo(host_)}, un homónimo de otra provincia")
+        if host_ in hosts_sitios and hosts_sitios[host_] != s_["municipio_id"]:
+            err.append(f"{ref}: el dominio {host_} ya está asignado a {hosts_sitios[host_]}")
+        hosts_sitios[host_] = s_["municipio_id"]
+        if s_.get("estado") == "CONFIRMADO" and not (s_.get("fuente") or "").strip():
+            err.append(f"{ref}: CONFIRMADO sin fuente de la confirmación")
+        for d_ in filter(None, (x.strip() for x in (s_.get("dominios_verificados") or "").split(";"))):
+            if _CP.dominio_homonimo(d_):
+                err.append(f"{ref}: dominios_verificados incluye el homónimo {d_}")
     codigos = [m_["indec_codigo"] for m_ in C.cargar_municipios_cfg() if m_.get("indec_codigo")]
     for cod in codigos:
         if not re.fullmatch(r"06\d{3}", cod):

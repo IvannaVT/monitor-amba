@@ -25,7 +25,7 @@ import detectar_cambios as D  # noqa: E402
 import extraer as E  # noqa: E402
 import normalizar as N  # noqa: E402
 
-SITIOS = C.DIR_CONFIG / "sitios_oficiales.csv"
+SITIOS = C.ARCHIVO_SITIOS
 MAX_PAGINAS, MAX_PAGINAS_HCD = 12, 6
 CAMPOS_CANAL = ["responsable_nombre", "responsable_apellido", "responsable_nombre_completo", "cargo", "email_institucional",
                 "telefono_institucional", "interno", "direccion", "horario_atencion", "sitio_web", "url_fuente", "evidencia"]
@@ -143,14 +143,26 @@ def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pa
     # Destinos que una redirección puede alcanzar además del mismo dominio: solo los verificados en la configuración.
     permitidos = {urlparse(u).hostname or "" for u in (url0, hcd_cfg) if u} | \
                  {d.strip() for d in (sitio.get("dominios_verificados") or "").split(";") if d.strip()}
+    permitidos = {h for h in permitidos if not CP.dominio_homonimo(h)}   # un homónimo de otra provincia nunca es destino válido
     r = _get(cli, url0, permitidos)
     if not r.ok:
         out["incidencias"].append(E._inc_respuesta(mid, r, fecha, snap, "contacto:sitio_oficial"))
         return out
     cab = CP.BeautifulSoup(r.texto, "lxml")
+    for t in cab(["script", "style", "noscript"]):
+        t.decompose()
     texto_id = " ".join([cab.title.get_text(" ") if cab.title else ""] + [h.get_text(" ") for h in cab.find_all(["h1", "h2"])[:6]] +
                         [m.get("content", "") for m in cab.find_all("meta", attrs={"property": "og:site_name"})])
     host0 = urlparse(r.url_final or url0).hostname or ""
+    # El dominio debe corresponder al municipio del AMBA: ni el dominio de un homónimo conocido ni una página que se declare de otra provincia.
+    homonimo = CP.dominio_homonimo(host0)
+    ajena = "" if homonimo else CP.provincia_ajena(texto_id + " " + cab.get_text(" ", strip=True)[:4000])
+    if homonimo or ajena:
+        out["incidencias"].append(_inc(mid, "sitio_oficial", "SITIO_HOMONIMO",
+                                       f"{r.diagnostico()}; el sitio parece de otro municipio homónimo "
+                                       f"({homonimo or 'Provincia de ' + ajena.title()}), no de {nombre} (Buenos Aires).", url0, fecha, snap, "ALTO",
+                                       "Corregir config/sitios_oficiales.csv con el dominio oficial del municipio bonaerense."))
+        return out
     # CONFIRMADO = una persona verificó que es el sitio oficial de este municipio (p. ej. su título no nombra al municipio).
     verificado = sitio.get("estado") == "CONFIRMADO" or (C.normalizar_texto(nombre) in C.normalizar_texto(texto_id) and _oficial(host0))
     if not verificado:
