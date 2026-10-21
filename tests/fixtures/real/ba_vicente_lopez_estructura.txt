@@ -1,0 +1,382 @@
+# Estructura de la ficha: 244 fragmentos; secciones: ['Vicente López', 'Datos clave', 'Cómo se compone su índice', 'Control', 'Intendente', 'Partidos para comparar', 'Fuentes', 'json']; orientación valor/etiqueta: adelante
+
+   0   [] Municipios
+   1   [] Argentinos
+   2   [] Mapa
+   3   [] Ranking
+   4   [] Ratio
+   5   [] Privatización
+   6   [] Petición
+   7   [] Metodología
+   8   [] Inicio
+   9   [] /
+  10   [] Ranking
+  11   [] / Vicente López
+  12 H [Vicente López] Vicente López
+  13   [Vicente López] Índice municipal, transparencia, servicios, seguridad y control de Vicente López, con datos oficiales.
+  14   [Vicente López] 80,2
+  15   [Vicente López] / 100
+  16   [Vicente López] Índice verde
+  17   [Vicente López] Vicente López es un partido de la provincia de Buenos Aires (sección electoral 1, grupo Conurbano). Su índice municipal es de
+  18   [Vicente López] 80,2 sobre 100
+  19   [Vicente López] , puesto 3 de 135 en la provincia de Buenos Aires, 3 de 2.280 en el país y 1 de 24 entre sus pares, con índice verde. Con ±10 puntos en los 
+  20   [Vicente López] Abrir la ficha interactiva
+  21 H [Datos clave] Datos clave
+  22   [Datos clave] Índice municipal
+  23   [Datos clave] 80,2 / 100
+  24   [Datos clave] Puesto en la provincia
+  25   [Datos clave] 3 de 135
+  26   [Datos clave] Puesto en el país
+  27   [Datos clave] 3 de 2.280
+  28   [Datos clave] Puesto en su grupo
+  29   [Datos clave] 1 de 24
+  30   [Datos clave] Transparencia (relevamiento propio)
+  31   [Datos clave] 75,0 / 100
+  32   [Datos clave] Hogares con cloacas
+  33   [Datos clave] 98,0 %
+  34   [Datos clave] Hogares con agua de red
+  35   [Datos clave] 98,6 %
+  36   [Datos clave] Hogares con gas de red
+  37   [Datos clave] 81,2 %
+  38   [Datos clave] Seguridad, puntaje entre pares (más alto es mejor)
+  39   [Datos clave] 93,7 / 100
+  40   [Datos clave] Homicidios dolosos, promedio 2023-2025 (SNIC)
+  41   [Datos clave] 1,1 cada 100.000 hab. (3 víctimas en 2025)
+  42   [Datos clave] Empleados municipales (informativo, no puntúa)
+  43   [Datos clave] 4.125 (2026-08; empleados ocupados, personas en la nómina); planta permanente 1.315, planta temporaria 2.722, personal superior 88; 14,6 cad
+  44   [Datos clave] Población (Censo 2022)
+  45   [Datos clave] 282.280
+  46 H [Cómo se compone su índice] Cómo se compone su índice
+  47   [Cómo se compone su índice] Transparencia
+  48   [Cómo se compone su índice] (50 % del índice): 75,0 de 100.
+  49   [Cómo se compone su índice] Servicios y seguridad
+  50   [Cómo se compone su índice] (35 % del índice): 90,8 de 100.
+  51   [Cómo se compone su índice] Control externo y judicial
+  52   [Cómo se compone su índice] (15 % del índice): 72,6 de 100.
+  53   [Cómo se compone su índice] Los puntajes se calculan entre pares, con las mismas reglas para los 2.280 gobiernos locales del país.
+  54   [Cómo se compone su índice] Ver la metodología
+  55   [Cómo se compone su índice] .
+  56   [Cómo se compone su índice] Semáforo de transparencia: amarillo.
+  57 H [Control] Control
+  58   [Control] Último fallo del Tribunal de Cuentas sobre la rendición (2024): aprobada con observaciones.
+  59   [Control] 3 señales de control registradas (Tribunal de Cuentas y causas judiciales verificadas).
+  60 H [Intendente] Intendente
+  61   [Intendente] Intendenta:
+  62   [Intendente] Soledad Martínez
+  63   [Intendente] , en funciones desde el 2023-12-10 (PRO).
+  64 H [Partidos para comparar] Partidos para comparar
+  65   [Partidos para comparar] Rauch
+  66   [Partidos para comparar] : 80,8/100, puesto 2
+  67   [Partidos para comparar] General Pueyrredón
+  68   [Partidos para comparar] : 76,1/100, puesto 4
+  69   [Partidos para comparar] Tres de Febrero
+  70   [Partidos para comparar] : 64,3/100, puesto 19
+  71   [Partidos para comparar] San Isidro
+  72   [Partidos para comparar] : 62,0/100, puesto 24
+  73   [Partidos para comparar] Avellaneda
+  74   [Partidos para comparar] : 56,2/100, puesto 44
+  75   [Partidos para comparar] Tigre
+  76   [Partidos para comparar] : 54,4/100, puesto 47
+  77   [Partidos para comparar] Lanús
+  78   [Partidos para comparar] : 50,7/100, puesto 61
+  79   [Partidos para comparar] General San Martín
+  80   [Partidos para comparar] : 50,1/100, puesto 64
+  81   [Partidos para comparar] Quilmes
+  82   [Partidos para comparar] : 49,5/100, puesto 67
+  83   [Partidos para comparar] San Miguel
+  84   [Partidos para comparar] : 48,6/100, puesto 72
+  85 H [Fuentes] Fuentes
+  86   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  87   [Fuentes] Cuadro 1.2. Provincia de Buenos Aires. Total de población, variación absoluta y variación relativa, por partido. Años 2010 y 2022
+  88   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  89   [Fuentes] Cuadro 2.2. Provincia de Buenos Aires. Total de hogares, por provisión del agua, según procedencia del agua, por partido. Año 2022
+  90   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  91   [Fuentes] Cuadro 3.2. Provincia de Buenos Aires. Total de hogares, por ubicación del baño o letrina, según desagüe y descarga de agua del inodoro, y p
+  92   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  93   [Fuentes] Cuadro 4.2. Provincia de Buenos Aires. Total de hogares, por combustible utilizado principalmente para cocinar, según partido. Año 2022
+  94   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  95   [Fuentes] Cuadro 2.2. Provincia de Buenos Aires. Total de viviendas particulares ocupadas y hogares, por cantidad de hogares, según partido. Año 2022
+  96   [Fuentes] Relevamiento propio (manual) de sitios web oficiales municipales:
+  97   [Fuentes] Verificación manual de transparencia activa (8 criterios) con URL exacta
+  98   [Fuentes] Asociación Argentina de Presupuesto y Administración Financiera Pública (ASAP) – Filial Provincia de Buenos Aires:
+  99   [Fuentes] Transparencia Fiscal Municipal – Provincia de Buenos Aires, Informe N.º 28 (mayo de 2026)
+ 100   [Fuentes] Honorable Tribunal de Cuentas de la Provincia de Buenos Aires:
+ 101   [Fuentes] Buscador de fallos (sistema Summun): fallos del H. Tribunal de Cuentas sobre rendiciones de cuentas
+ 102   [Fuentes] Municipalidad de Vicente López - Recursos Humanos (portal de datos abiertos, dashboard RRHH):
+ 103   [Fuentes] RRHH - Estructura por Género - 2026
+ 104   [Fuentes] Inicio
+ 105   [Fuentes] Ranking
+ 106   [Fuentes] Ratio municipal
+ 107   [Fuentes] Metodología
+ 108   [Fuentes] Aviso legal
+ 109   [Fuentes] Preferencias de cookies
+ 110   [Fuentes] Datos actualizados al 2026-10-15. Fuentes oficiales citadas en cada dato.
+ 111 H [json] json
+ 112   [json] @context
+ 113   [json] https://schema.org
+ 114   [json] @type
+ 115   [json] Organization
+ 116   [json] @id
+ 117   [json] https://municipiosargentinos.net/#org
+ 118   [json] name
+ 119   [json] Municipios Argentinos
+ 120   [json] url
+ 121   [json] https://municipiosargentinos.net/
+ 122   [json] @type
+ 123   [json] ImageObject
+ 124   [json] url
+ 125   [json] https://municipiosargentinos.net/favicon.svg
+ 126   [json] @id
+ 127   [json] https://municipiosargentinos.net/#web
+ 128   [json] @type
+ 129   [json] WebSite
+ 130   [json] name
+ 131   [json] Municipios Argentinos
+ 132   [json] url
+ 133   [json] https://municipiosargentinos.net/
+ 134   [json] @type
+ 135   [json] WebPage
+ 136   [json] @id
+ 137   [json] https://municipiosargentinos.net/m/vicente-lopez/
+ 138   [json] url
+ 139   [json] https://municipiosargentinos.net/m/vicente-lopez/
+ 140   [json] name
+ 141   [json] Vicente López: índice 80,2/100, puesto 3 de 135 en Buenos Aires · 3 de 2.280 en el país | Municipios Argentinos
+ 142   [json] description
+ 143   [json] Vicente López: Índice municipal 80,2/100 (puesto 3 de 135 en Buenos Aires · 3 de 2.280 en el país; índice verde); transparencia 75,0/100; cl
+ 144   [json] in Language
+ 145   [json] es-AR
+ 146   [json] @id
+ 147   [json] https://municipiosargentinos.net/#web
+ 148   [json] @id
+ 149   [json] https://municipiosargentinos.net/m/vicente-lopez/#partido
+ 150   [json] @type
+ 151   [json] ImageObject
+ 152   [json] url
+ 153   [json] https://municipiosargentinos.net/img/og/vicente-lopez.jpg?v=0ba81c78cc
+ 154   [json] width
+ 155   [json] 1200
+ 156   [json] height
+ 157   [json] 630
+ 158   [json] date Modified
+ 159   [json] 2026-10-15
+ 160   [json] @id
+ 161   [json] https://municipiosargentinos.net/m/vicente-lopez/#bc
+ 162   [json] @type
+ 163   [json] BreadcrumbList
+ 164   [json] @type
+ 165   [json] ListItem
+ 166   [json] position
+ 167   [json] 1
+ 168   [json] name
+ 169   [json] Inicio
+ 170   [json] item
+ 171   [json] https://municipiosargentinos.net/
+ 172   [json] @type
+ 173   [json] ListItem
+ 174   [json] position
+ 175   [json] 2
+ 176   [json] name
+ 177   [json] Ranking
+ 178   [json] item
+ 179   [json] https://municipiosargentinos.net/ranking/
+ 180   [json] @type
+ 181   [json] ListItem
+ 182   [json] position
+ 183   [json] 3
+ 184   [json] name
+ 185   [json] Vicente López
+ 186   [json] item
+ 187   [json] https://municipiosargentinos.net/m/vicente-lopez/
+ 188   [json] @id
+ 189   [json] https://municipiosargentinos.net/m/vicente-lopez/#bc
+ 190   [json] @type
+ 191   [json] AdministrativeArea
+ 192   [json] @type
+ 193   [json] Place
+ 194   [json] @id
+ 195   [json] https://municipiosargentinos.net/m/vicente-lopez/#partido
+ 196   [json] name
+ 197   [json] Vicente López
+ 198   [json] alternate Name
+ 199   [json] Partido de Vicente López
+ 200   [json] @type
+ 201   [json] AdministrativeArea
+ 202   [json] name
+ 203   [json] Provincia de Buenos Aires
+ 204   [json] @type
+ 205   [json] Country
+ 206   [json] name
+ 207   [json] Argentina
+ 208   [json] @type
+ 209   [json] PropertyValue
+ 210   [json] property ID
+ 211   [json] INDEC código de partido
+ 212   [json] value
+ 213   [json] 06861
+ 214   [json] url
+ 215   [json] https://municipiosargentinos.net/m/vicente-lopez/
+ 216   [json] image
+ 217   [json] https://municipiosargentinos.net/img/m/vicente-lopez.webp?v=e177f840b3
+ 218   [json] @type
+ 219   [json] PropertyValue
+ 220   [json] name
+ 221   [json] Población (Censo 2022)
+ 222   [json] value
+ 223   [json] 282280
+ 224   [json] @type
+ 225   [json] GovernmentOrganization
+ 226   [json] @id
+ 227   [json] https://municipiosargentinos.net/m/vicente-lopez/#municipalidad
+ 228   [json] name
+ 229   [json] Municipalidad de Vicente López
+ 230   [json] @id
+ 231   [json] https://municipiosargentinos.net/m/vicente-lopez/#partido
+ 232   [json] @type
+ 233   [json] Person
+ 234   [json] name
+ 235   [json] Soledad Martínez
+ 236   [json] job Title
+ 237   [json] Intendenta
+ 238   [json] @type
+ 239   [json] Person
+ 240   [json] name
+ 241   [json] Soledad Martínez
+ 242   [json] job Title
+ 243   [json] Intendenta
+
+# Reconocidos
+indice_global = 80.2  <- 'Índice municipal' en 'Datos clave' (MEDIO)
+ranking_provincial = 3  <- 'Puesto en la provincia' en 'Datos clave' (MEDIO)
+ranking_pares = 1  <- 'Puesto en su grupo' en 'Datos clave' (MEDIO)
+transparencia_relevamiento_propio = 75.0  <- 'Transparencia (relevamiento propio)' en 'Datos clave' (MEDIO)
+cobertura_agua_pct = 98.6  <- 'Hogares con agua de red' en 'Datos clave' (MEDIO)
+cobertura_gas_pct = 81.2  <- 'Hogares con gas de red' en 'Datos clave' (MEDIO)
+poblacion_2022 = 282280  <- 'Población (Censo 2022)' en 'Datos clave' (MEDIO)
+transparencia_semaforo = 'AMARILLO'  <- 'Semáforo de transparencia' en 'Cómo se compone su índice' (MEDIO)
+intendente_nombre_completo = 'Soledad Martínez'  <- 'Intendenta' en 'Intendente' (MEDIO)
+
+# Rechazados
+ > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+ > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+Datos clave > Seguridad, puntaje entre pares (más alto es mejor) = 93,7 / 100: formato de ranking no reconocido
+Datos clave > Seguridad, puntaje entre pares (más alto es mejor) = Homicidios dolosos, promedio 2: formato de ranking no reconocido
+Datos clave > 1,1 cada 100.000 hab. (3 víctimas en 2025) = 4.125 (2026-08; empleados ocup: formato de cantidad no reconocido
+Cómo se compone su índice > Transparencia = (50 % del índice): 75,0 de 100: formato no numérico
+Cómo se compone su índice > Servicios y seguridad = (35 % del índice): 90,8 de 100: formato no numérico
+Cómo se compone su índice > Control externo y judicial = (15 % del índice): 72,6 de 100: formato no numérico
+Cómo se compone su índice > Control externo y judicial = Los puntajes se calculan entre: formato no numérico
+Fuentes > Relevamiento propio (manual) de sitios web oficiales municipales: etiqueta reconocida (transparencia_relevamiento_propio) sin valor
+Fuentes > Verificación manual de transparencia activa (8 criterios) con URL exacta = Transparencia Fiscal Municipal: formato no numérico
+Fuentes > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+json > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+json > Intendenta: etiqueta reconocida (intendente_nombre_completo) sin valor
+json > Intendenta: etiqueta reconocida (intendente_nombre_completo) sin valor
+
+# Etiquetas no reconocidas
+Vicente López > Índice verde = Vicente López es un partido de
+Vicente López > 80,2 sobre 100 = , puesto 3 de 135 en la provin
+Datos clave > Puesto en el país = 3 de 2.280
+Datos clave > Hogares con cloacas = 98,0 %
+Datos clave > Homicidios dolosos, promedio 2023-2025 ( = 1,1 cada 100.000 hab. (3 vícti
+Datos clave > Empleados municipales (informativo, no p = 4.125 (2026-08; empleados ocup
+Cómo se compone su índice > (50 % del índice) = 75,0 de 100.
+Cómo se compone su índice > (35 % del índice) = 90,8 de 100.
+Cómo se compone su índice > (15 % del índice) = 72,6 de 100.
+Partidos para comparar > Rauch = : 80,8/100, puesto 2
+Partidos para comparar >  = 80,8/100, puesto 2
+Partidos para comparar > General Pueyrredón = : 76,1/100, puesto 4
+Partidos para comparar >  = 76,1/100, puesto 4
+Partidos para comparar > Tres de Febrero = : 64,3/100, puesto 19
+Partidos para comparar >  = 64,3/100, puesto 19
+Partidos para comparar > San Isidro = : 62,0/100, puesto 24
+Partidos para comparar >  = 62,0/100, puesto 24
+Partidos para comparar > Avellaneda = : 56,2/100, puesto 44
+Partidos para comparar >  = 56,2/100, puesto 44
+Partidos para comparar > Tigre = : 54,4/100, puesto 47
+Partidos para comparar >  = 54,4/100, puesto 47
+Partidos para comparar > Lanús = : 50,7/100, puesto 61
+Partidos para comparar >  = 50,7/100, puesto 61
+Partidos para comparar > General San Martín = : 50,1/100, puesto 64
+Partidos para comparar >  = 50,1/100, puesto 64
+Partidos para comparar > Quilmes = : 49,5/100, puesto 67
+Partidos para comparar >  = 49,5/100, puesto 67
+Partidos para comparar > San Miguel = : 48,6/100, puesto 72
+Partidos para comparar >  = 48,6/100, puesto 72
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 1.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 2.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 3.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 4.2. Provincia de Bueno
+Fuentes > Preferencias de cookies = Datos actualizados al 2026-10-
+json > @context = https://schema.org
+json > https = //schema.org
+json > @type = Organization
+json > Organization = @id
+json > @id = https://municipiosargentinos.n
+json > https = //municipiosargentinos.net/#or
+json > name = Municipios Argentinos
+json > Municipios Argentinos = url
+json > url = https://municipiosargentinos.n
+json > https = //municipiosargentinos.net/
+json > @type = ImageObject
+json > ImageObject = url
+json > https = //municipiosargentinos.net/fav
+json > https = //municipiosargentinos.net/#we
+json > @type = WebSite
+json > WebSite = name
+json > @type = WebPage
+json > WebPage = @id
+json > https = //municipiosargentinos.net/m/v
+json > name = Vicente López: índice 80,2/100
+json > description = Vicente López: Índice municipa
+json > in Language = es-AR
+json > es-AR = @id
+json > width = 1200
+json > height = 630
+json > date Modified = 2026-10-15
+json > @type = BreadcrumbList
+json > BreadcrumbList = @type
+json > @type = ListItem
+json > ListItem = position
+json > position = 1
+json > name = Inicio
+json > Inicio = item
+json > item = https://municipiosargentinos.n
+json > position = 2
+json > name = Ranking
+json > https = //municipiosargentinos.net/ran
+json > position = 3
+json > name = Vicente López
+json > Vicente López = item
+json > @type = AdministrativeArea
+json > AdministrativeArea = @type
+json > @type = Place
+json > Place = @id
+json > Vicente López = alternate Name
+json > alternate Name = Partido de Vicente López
+json > Partido de Vicente López = @type
+json > AdministrativeArea = name
+json > name = Provincia de Buenos Aires
+json > Provincia de Buenos Aires = @type
+json > @type = Country
+json > Country = name
+json > name = Argentina
+json > Argentina = @type
+json > @type = PropertyValue
+json > PropertyValue = property ID
+json > property ID = INDEC código de partido
+json > INDEC código de partido = value
+json > value = 06861
+json > image = https://municipiosargentinos.n
+json > PropertyValue = name
+json > name = Población (Censo 2022)
+json > value = 282280
+json > @type = GovernmentOrganization
+json > GovernmentOrganization = @id
+json > name = Municipalidad de Vicente López
+json > Municipalidad de Vicente López = @id
+json > @type = Person
+json > Person = name
+json > name = Soledad Martínez
+json > Soledad Martínez = job Title
+json > job Title = Intendenta
