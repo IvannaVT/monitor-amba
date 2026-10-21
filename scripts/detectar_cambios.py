@@ -45,40 +45,54 @@ def _ultimas_dos(filas: list[dict], mid: str) -> tuple[dict | None, dict | None]
     return (f[-2], f[-1]) if len(f) >= 2 else (None, f[-1] if f else None)
 
 
+def _par_comparable(filas: list[dict], var: str, snap: str | None):
+    """(anterior, actual) con los dos últimos valores no vacíos de `var`; el actual debe ser de `snap`."""
+    con = [r for r in filas if (r.get(var) or "").strip()]
+    if len(con) < 2 or (snap and con[-1]["snapshot_id"] != snap):
+        return None
+    return con[-2], con[-1]
+
+
 def alertas_indicadores(indicadores: list[dict], reglas: dict, fecha: str, solo_snapshot: str | None = None) -> list[dict]:
     res = []
     umbral = reglas["umbral_variacion_absoluta"]
     for mid in sorted({r["municipio_id"] for r in indicadores}):
-        ant, act = _ultimas_dos(indicadores, mid)
-        if ant is None or act is None or (solo_snapshot and act["snapshot_id"] != solo_snapshot):
-            continue  # línea de base o captura no actual
-        args = (mid, ant["snapshot_id"], act["snapshot_id"], fecha)
-        evento = act.get("fecha_actualizacion_portal", "")
+        filas = [r for r in indicadores if r["municipio_id"] == mid]
+        def args(par): return (mid, par[0]["snapshot_id"], par[1]["snapshot_id"], fecha)  # noqa: E704
         for var, nombre in reglas["variables_numericas_0_100"].items():
-            a, b = C.parse_num(ant.get(var)), C.parse_num(act.get(var))
+            par = _par_comparable(filas, var, solo_snapshot)
+            if not par:
+                continue
+            a, b = C.parse_num(par[0].get(var)), C.parse_num(par[1].get(var))
             if a is None or b is None or a == b:
                 continue
             d, rel = variaciones(a, b)
             if abs(d) >= umbral:
                 sev = "ALTA" if abs(d) >= umbral * reglas["umbral_alta_multiplo"] else "MEDIA"
-                res.append(_alerta(*args, "CAPA_II_DESEMPENO", "VARIACION_INDICE", var, a, b, sev,
+                res.append(_alerta(*args(par), "CAPA_II_DESEMPENO", "VARIACION_INDICE", var, a, b, sev,
                                    f"{nombre}: variación de {d:+.1f} puntos (umbral {umbral}).",
-                                   evento, act.get("url_fuente", ""), "municipiosargentinos.net", d, rel))
+                                   par[1].get("fecha_actualizacion_portal", ""), par[1].get("url_fuente", ""),
+                                   "municipiosargentinos.net", d, rel))
         for var in reglas["variables_ranking"]:
-            a, b = C.parse_num(ant.get(var)), C.parse_num(act.get(var))
+            par = _par_comparable(filas, var, solo_snapshot)
+            if not par:
+                continue
+            a, b = C.parse_num(par[0].get(var)), C.parse_num(par[1].get(var))
             if a is None or b is None or a == b:
                 continue
             d, rel = variaciones(a, b)
             sev = "MEDIA" if abs(d) >= reglas["umbral_ranking_posiciones"] else "INFORMATIVA"
-            res.append(_alerta(*args, "CAPA_II_DESEMPENO", "VARIACION_RANKING", var, a, b, sev,
+            res.append(_alerta(*args(par), "CAPA_II_DESEMPENO", "VARIACION_RANKING", var, a, b, sev,
                                f"Ranking {var}: cambio de {d:+.0f} posiciones.",
-                               evento, act.get("url_fuente", ""), "municipiosargentinos.net", d, rel))
+                               par[1].get("fecha_actualizacion_portal", ""), par[1].get("url_fuente", ""),
+                               "municipiosargentinos.net", d, rel))
         for var, sev in reglas["variables_semaforo"].items():
-            a, b = (ant.get(var) or "").strip(), (act.get(var) or "").strip()
-            if a and b and a != b:  # cualquier cambio de semáforo es alerta
-                res.append(_alerta(*args, "CAPA_II_DESEMPENO", "CAMBIO_SEMAFORO", var, a, b, sev,
-                                   f"Semáforo de transparencia: {a} -> {b}.", evento,
-                                   act.get("url_fuente", ""), "municipiosargentinos.net"))
+            par = _par_comparable(filas, var, solo_snapshot)
+            if par and par[0][var].strip() != par[1][var].strip():  # cualquier cambio de semáforo es alerta
+                res.append(_alerta(*args(par), "CAPA_II_DESEMPENO", "CAMBIO_SEMAFORO", var, par[0][var], par[1][var], sev,
+                                   f"Semáforo de transparencia: {par[0][var]} -> {par[1][var]}.",
+                                   par[1].get("fecha_actualizacion_portal", ""), par[1].get("url_fuente", ""),
+                                   "municipiosargentinos.net"))
     return res
 
 

@@ -1,6 +1,6 @@
 ﻿municipio_id;municipio;indec_codigo;seccion_electoral;url_portal_municipio
 ba_almirante_brown;Almirante Brown;;;
-ba_avellaneda;Avellaneda;;;
+ba_avellaneda;Avellaneda;;;https://municipiosargentinos.net/m/avellaneda/
 ba_berazategui;Berazategui;;;
 ba_berisso;Berisso;;;
 ba_brandsen;Brandsen;;;
@@ -36,6 +36,6 @@ ba_san_isidro;San Isidro;;;
 ba_san_miguel;San Miguel;;;
 ba_san_vicente;San Vicente;;;
 ba_tigre;Tigre;;;
-ba_tres_de_febrero;Tres de Febrero;;;
-ba_vicente_lopez;Vicente López;;;
+ba_tres_de_febrero;Tres de Febrero;;;https://municipiosargentinos.net/m/tres-de-febrero/
+ba_vicente_lopez;Vicente López;;;https://municipiosargentinos.net/m/vicente-lopez/
 ba_zarate;Zárate;;;

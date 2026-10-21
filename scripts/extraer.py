@@ -4,8 +4,8 @@
 Principios (spec sec. 15 y 25):
 - Respeta robots.txt (si no se puede verificar, NO se consulta: falla cerrada).
 - Límite de solicitudes; ante 403/429/bloqueos no se reintenta ni se elude.
-- No descubre rutas por patrón: las páginas se encuentran por los enlaces del
-  portal (o por `url_portal_municipio` en config/municipios_amba.csv).
+- No deduce rutas por patrón: se usa `url_portal_municipio` (config) y, como respaldo, los
+  enlaces de la portada.
 - Nunca inventa datos: lo que no se encuentra queda en blanco + incidencia.
 - Todo valor extraído genera una fila de trazabilidad en 05_amba_fuentes.csv.
 - No ejecuta nada de lo que contengan las páginas (solo se lee texto).
@@ -17,6 +17,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import time
@@ -24,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from urllib import robotparser
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -52,11 +53,11 @@ CAMPOS_PORTAL: dict[str, dict] = {
     "transparencia_puntaje": dict(tipo="num", sin=["transparencia", "pilar transparencia", "puntaje transparencia"]),
     "transparencia_relevamiento_propio": dict(tipo="num", sin=["relevamiento propio", "transparencia activa", "relevamiento propio de transparencia activa"]),
     "transparencia_asap": dict(tipo="num", sin=["indice de transparencia fiscal asap", "transparencia fiscal asap", "asap", "itf asap"]),
-    "transparencia_semaforo": dict(tipo="semaforo", sin=["semaforo de transparencia", "semaforo"]),
+    "transparencia_semaforo": dict(tipo="semaforo", sin=["semaforo de transparencia", "semaforo", "transparencia semaforo"]),
     "presupuesto_publicado": dict(tipo="bool", sin=["presupuesto publicado", "publica presupuesto", "publicacion del presupuesto"]),
     "ejecucion_publicada": dict(tipo="bool", sin=["ejecucion publicada", "ejecucion presupuestaria publicada", "publicacion de ejecucion presupuestaria"]),
     "servicios_seguridad_puntaje": dict(tipo="num", sin=["servicios y seguridad", "pilar servicios y seguridad"]),
-    "seguridad_puntaje": dict(tipo="num", sin=["seguridad", "puntaje seguridad", "puntaje de seguridad"]),
+    "seguridad_puntaje": dict(tipo="num", sin=["seguridad", "puntaje seguridad", "puntaje de seguridad", "seguridad puntaje"]),
     "homicidios_tasa_100k": dict(tipo="num", sin=["tasa de homicidios dolosos", "tasa de homicidios", "homicidios por 100 000 habitantes", "homicidios cada 100 000 habitantes"]),
     "homicidios_periodo": dict(tipo="txt", sin=["periodo de la tasa de homicidios", "periodo homicidios"]),
     "victimas_homicidio_ultimo_anio": dict(tipo="int", sin=["victimas de homicidio", "victimas homicidios", "victimas ultimo anio"]),
@@ -93,6 +94,15 @@ for _campo, _d in CAMPOS_PORTAL.items():
 
 
 # ------------------------------------------------------------------ cliente
+def url_segura(url: str) -> str:
+    """URL sin credenciales, query ni fragmento (para registrar sin datos sensibles)."""
+    p = urlparse(url or "")
+    host = p.hostname or ""
+    if p.port:
+        host += f":{p.port}"
+    return urlunparse((p.scheme, host, p.path, "", "", ""))
+
+
 @dataclass
 class Respuesta:
     url: str
@@ -101,6 +111,19 @@ class Respuesta:
     texto: str = ""
     tipo_error: str = ""
     detalle: str = ""
+    url_final: str = ""
+    redirecciones: tuple = ()  # ((codigo, url_destino), ...) ya saneadas
+
+    @property
+    def pagina_ausente(self) -> bool:
+        return self.status in (404, 410)
+
+    def diagnostico(self) -> str:
+        """Resumen registrable: código HTTP, URL final, redirecciones y causa."""
+        red = " -> ".join(f"{c} {u}" for c, u in self.redirecciones) or "sin redirecciones"
+        return (f"HTTP {self.status if self.status is not None else 'sin respuesta'}; "
+                f"url_final={url_segura(self.url_final or self.url)}; redirecciones: {red}; "
+                f"causa: {self.detalle or self.tipo_error or 'n/a'}")
 
     @property
     def sha256(self) -> str:
@@ -119,6 +142,7 @@ class Cliente:
         self._robots: dict[str, tuple[robotparser.RobotFileParser | None, str]] = {}
         self._ultimo = 0.0
         self.n_solicitudes = 0
+        self.eventos: list[dict] = []
 
     def _esperar(self, extra: float = 0.0) -> None:
         espera = max(self.pausa, extra) - (time.monotonic() - self._ultimo)
@@ -163,6 +187,11 @@ class Cliente:
         return self._robots[origen]
 
     def get(self, url: str) -> Respuesta:
+        r = self._get(url)
+        self.eventos.append({"url": url_segura(url), "status": r.status, "ok": r.ok, "tipo_error": r.tipo_error})
+        return r
+
+    def _get(self, url: str) -> Respuesta:
         rp, motivo = self._robots_de(url)
         if rp is None:
             return Respuesta(url, False, tipo_error="ROBOTS_NO_VERIFICABLE", detalle=motivo)
@@ -176,16 +205,33 @@ class Cliente:
         except requests.exceptions.RequestException as exc:
             tipo, det = self._clasificar(exc)
             return Respuesta(url, False, tipo_error=tipo, detalle=det)
+        final = url_segura(getattr(r, "url", "") or url)
+        saltos = tuple((h.status_code, url_segura(getattr(h, "headers", {}).get("Location", "") or h.url))
+                       for h in (getattr(r, "history", None) or ()))
+        base = dict(url_final=final, redirecciones=saltos)
+        if urlparse(final).netloc != urlparse(url).netloc:
+            return Respuesta(url, False, r.status_code, tipo_error="REDIRECCION_EXTERNA",
+                             detalle="redirige a otro dominio; no se sigue", **base)
+        if final != url_segura(url) and not rp.can_fetch(self.ua, final):
+            return Respuesta(url, False, r.status_code, tipo_error="PROHIBIDO_POR_ROBOTS",
+                             detalle="la URL final tras redirección no está permitida por robots.txt", **base)
         if r.status_code == 429:
             return Respuesta(url, False, 429, tipo_error="LIMITE_SOLICITUDES_429",
-                             detalle="HTTP 429; no se reintenta ni se eluden límites")
+                             detalle="HTTP 429; no se reintenta ni se eluden límites", **base)
         if r.status_code in (401, 403):
             return Respuesta(url, False, r.status_code, tipo_error="ACCESO_DENEGADO_HTTP",
-                             detalle=f"HTTP {r.status_code}; no se eluden restricciones")
+                             detalle=f"HTTP {r.status_code}; no se eluden restricciones", **base)
+        if r.status_code in (404, 410):
+            return Respuesta(url, False, r.status_code, tipo_error="PAGINA_AUSENTE",
+                             detalle=f"HTTP {r.status_code}: la página no existe", **base)
         if r.status_code >= 400:
-            return Respuesta(url, False, r.status_code, tipo_error="ERROR_HTTP", detalle=f"HTTP {r.status_code}")
+            return Respuesta(url, False, r.status_code, tipo_error="ERROR_HTTP",
+                             detalle=f"HTTP {r.status_code}", **base)
         r.encoding = r.encoding or r.apparent_encoding or "utf-8"
-        return Respuesta(url, True, r.status_code, texto=r.text)
+        if not (r.text or "").strip():
+            return Respuesta(url, False, r.status_code, tipo_error="RESPUESTA_VACIA",
+                             detalle="HTTP 200 sin contenido", **base)
+        return Respuesta(url, True, r.status_code, texto=r.text, **base)
 
 
 class ClienteBloqueado:
@@ -195,8 +241,10 @@ class ClienteBloqueado:
 
     def __init__(self, detalle: str):
         self.detalle = detalle
+        self.eventos: list[dict] = []
 
     def get(self, url: str) -> Respuesta:
+        self.eventos.append({"url": url_segura(url), "status": None, "ok": False, "tipo_error": "ACCESO_BLOQUEADO_RED"})
         return Respuesta(url, False, tipo_error="ACCESO_BLOQUEADO_RED", detalle=self.detalle)
 
 
@@ -212,6 +260,13 @@ def descubrir_enlaces(html: str, base: str) -> list[tuple[str, str]]:
             continue
         vistos.add(url)
         res.append((a.get_text(" ", strip=True), url))
+    # Rutas de ficha /m/<slug>/ que aparezcan en el HTML/JSON crudo (listados generados por script).
+    # Solo se leen como texto; nunca se ejecuta nada.
+    for m in re.finditer(r'(?:https?://[^"\'\s<>]*?)?(/m/[a-z0-9][a-z0-9\-]*/?)(?=["\'\s<>?#\\])', html):
+        url = urljoin(base, m.group(1))
+        if urlparse(url).netloc == host and url not in vistos:
+            vistos.add(url)
+            res.append(("", url))
     return res
 
 
@@ -230,12 +285,43 @@ def encontrar_pagina_municipio(enlaces: list[tuple[str, str]], nombre: str) -> t
     return None, "enlaces ambiguos: " + " | ".join(candidatos)
 
 
+def _aplanar_json(o, clave: str = "") -> list[tuple[str, str]]:
+    """Pares (clave de hoja, valor escalar) de un JSON; camelCase/snake_case -> palabras."""
+    res: list[tuple[str, str]] = []
+    if isinstance(o, dict):
+        for k, v in o.items():
+            res += _aplanar_json(v, str(k))
+    elif isinstance(o, list):
+        for v in o[:200]:
+            res += _aplanar_json(v, clave)
+    elif isinstance(o, (str, int, float, bool)) and clave and not isinstance(o, bool):
+        res.append((re.sub(r"([a-z])([A-Z])", r"\1 \2", clave).replace("_", " "), str(o)))
+    return res
+
+
+def etiquetas_no_reconocidas(html: str, maximo: int = 15) -> list[str]:
+    """Etiquetas de la ficha que no coinciden con ningún sinónimo (ayuda a ajustar CAMPOS_PORTAL)."""
+    vistas: list[str] = []
+    for et, _ in extraer_pares(html):
+        n = C.normalizar_texto(et)
+        if n and n not in _INDICE_ETIQUETAS and n not in {C.normalizar_texto(x) for x in CAMPO_FECHA_PORTAL[1]} \
+                and et[:40] not in vistas and len(et) <= 60:
+            vistas.append(et[:40])
+    return vistas[:maximo]
+
+
 def extraer_pares(html: str) -> list[tuple[str, str]]:
     """Pares (etiqueta, valor) desde tablas, listas de definición y 'Etiqueta: valor'."""
     soup = BeautifulSoup(html, "lxml")
+    pares: list[tuple[str, str]] = []
+    for sc in soup.find_all("script"):  # datos estructurados embebidos (solo se parsean como JSON)
+        if (sc.get("type") or "").lower() in ("application/json", "application/ld+json") or sc.get("id") == "__NEXT_DATA__":
+            try:
+                pares += _aplanar_json(json.loads(sc.string or ""))
+            except (ValueError, TypeError):
+                pass
     for t in soup(["script", "style", "noscript"]):
         t.decompose()
-    pares: list[tuple[str, str]] = []
     for tr in soup.find_all("tr"):
         celdas = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
         if len(celdas) >= 2 and celdas[0] and celdas[1]:
@@ -371,34 +457,76 @@ ACCION_POR_TIPO = {
 }
 
 
-def procesar_municipio(cli: Cliente, cfg: dict, enlaces: list[tuple[str, str]] | None,
-                       fecha: str, snap: str, errores_portada: Respuesta | None) -> dict:
+class Descubridor:
+    """Descubre enlaces de la portada solo si hace falta (una única consulta por ejecución)."""
+
+    def __init__(self, cli):
+        self.cli, self._hecho, self.enlaces, self.error = cli, False, [], None
+
+    def resolver(self, nombre: str) -> tuple[str | None, Respuesta | None, str]:
+        if not self._hecho:
+            self._hecho = True
+            rp = self.cli.get(BASE_URL)
+            if rp.ok:
+                self.enlaces = descubrir_enlaces(rp.texto, BASE_URL)
+            else:
+                self.error = rp
+        if self.error is not None:
+            return None, self.error, ""
+        url, motivo = encontrar_pagina_municipio(self.enlaces, nombre)
+        return url, None, motivo
+
+
+def _inc_respuesta(mid, r: Respuesta, fecha, snap, campo="pagina_municipio"):
+    """Incidencia fiel a la causa real; PAGINA_NO_ENCONTRADA solo para 404/410."""
+    tipo = "PAGINA_AUSENTE" if r.pagina_ausente else r.tipo_error
+    impacto = "ALTO"
+    return _incidencia(mid, campo, tipo, r.diagnostico(), url_segura(r.url), fecha, snap, impacto,
+                       ACCION_POR_TIPO.get(tipo, "Revisar la URL configurada o reintentar en otra ejecución."),
+                       url_segura(r.url), url_segura(r.url_final or ""))
+
+
+def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, snap: str) -> dict:
+    """Prioridad: URL configurada. El descubrimiento por portada es respaldo (si no hay URL o da 404/410)."""
     mid, nombre = cfg["municipio_id"], cfg["municipio"]
-    out = {"indicadores": None, "municipio": None, "fuentes": [], "incidencias": [], "estado": "SIN_DATOS", "campos": 0}
+    out = {"indicadores": None, "municipio": None, "fuentes": [], "incidencias": [], "estado": "SIN_DATOS",
+           "campos": 0, "url_origen": "", "http": None}
     fila01 = {"municipio_id": mid, "municipio": nombre, "seccion_electoral": cfg.get("seccion_electoral", ""),
               "fecha_verificacion": fecha, "snapshot_id": snap}
     out["municipio"] = fila01
 
-    url = (cfg.get("url_portal_municipio") or "").strip()
-    if not url:
-        if errores_portada is not None:
-            tipo = errores_portada.tipo_error
-            out["incidencias"].append(_incidencia(
-                mid, "pagina_municipio", tipo, f"No se pudo consultar el portal: {errores_portada.detalle}",
-                errores_portada.url, fecha, snap, "ALTO", ACCION_POR_TIPO.get(tipo, "Reintentar."), BASE_URL))
+    r, url = None, (cfg.get("url_portal_municipio") or "").strip()
+    fallida = ""
+    if url:
+        out["url_origen"] = "configurada"
+        r = cli.get(url)
+        if not r.ok and not r.pagina_ausente:  # 403/429/red/robots: no se busca otra ruta
+            out["http"] = r.status
+            out["incidencias"].append(_inc_respuesta(mid, r, fecha, snap))
             return out
-        url, motivo = encontrar_pagina_municipio(enlaces or [], nombre)
+        if not r.ok:  # página ausente: se intenta el respaldo
+            out["incidencias"].append(_inc_respuesta(mid, r, fecha, snap))
+            fallida, url, r = url_segura(url), "", None
+    if not url:
+        out["url_origen"] = "descubierta"
+        url, err, motivo = desc.resolver(nombre)
+        if err is not None:
+            out["incidencias"].append(_inc_respuesta(mid, err, fecha, snap, "portada"))
+            return out
         if not url:
             out["incidencias"].append(_incidencia(
-                mid, "pagina_municipio", "PAGINA_NO_ENCONTRADA", motivo, BASE_URL, fecha, snap, "ALTO",
+                mid, "pagina_municipio", "PAGINA_NO_ENCONTRADA",
+                f"La portada respondió correctamente pero {motivo}.", BASE_URL, fecha, snap, "ALTO",
                 "Completar url_portal_municipio en config/municipios_amba.csv tras revisión manual.", BASE_URL))
             return out
-    r = cli.get(url)
+        if fallida and url_segura(url) == fallida:  # el respaldo apunta a la misma URL ya ausente
+            return out
+        r = cli.get(url)
+    out["http"] = r.status
     if not r.ok:
-        out["incidencias"].append(_incidencia(
-            mid, "pagina_municipio", r.tipo_error, r.detalle, url, fecha, snap, "ALTO",
-            ACCION_POR_TIPO.get(r.tipo_error, "Reintentar."), url))
+        out["incidencias"].append(_inc_respuesta(mid, r, fecha, snap))
         return out
+    url = url_segura(r.url_final or url)
 
     hallados, contradicciones = interpretar_pagina(r.texto)
     fila04 = {"municipio_id": mid, "snapshot_id": snap, "fecha_extraccion": fecha, "url_fuente": url}
@@ -421,7 +549,9 @@ def procesar_municipio(cli: Cliente, cfg: dict, enlaces: list[tuple[str, str]] |
     if faltan:
         out["incidencias"].append(_incidencia(
             mid, ";".join(faltan), "DATOS_NO_ENCONTRADOS",
-            f"{len(faltan)} de {len(CAMPOS_PORTAL)} campos del portal no figuran en la página (quedan en blanco).",
+            f"{len(faltan)} de {len(CAMPOS_PORTAL)} campos del portal no figuran en la página (quedan en blanco). "
+            f"Faltantes: {', '.join(faltan)}. Etiquetas no reconocidas en la ficha: "
+            f"{'; '.join(etiquetas_no_reconocidas(r.texto)) or 'ninguna'}.",
             url, fecha, snap, "BAJO" if n_hallados else "ALTO",
             "Verificar si el portal los publica con otra etiqueta; ajustar sinónimos en CAMPOS_PORTAL.", url))
     if n_hallados:
@@ -454,14 +584,7 @@ def ejecutar(municipios: str, fecha: str | None = None, pausa: float = 2.0, clie
     sel = seleccionar(cfg_all, municipios)
     cli = cliente or Cliente(pausa=pausa)
 
-    # 1) Portada: solo si algún municipio necesita descubrimiento de enlace.
-    enlaces, err_portada = None, None
-    if any(not (c.get("url_portal_municipio") or "").strip() for c in sel):
-        rp = cli.get(BASE_URL)
-        if rp.ok:
-            enlaces = descubrir_enlaces(rp.texto, BASE_URL)
-        else:
-            err_portada = rp
+    desc = Descubridor(cli)
 
     # 2) Metodología (una vez por ejecución).
     fuentes_extra, incid_extra = [], []
@@ -481,20 +604,46 @@ def ejecutar(municipios: str, fecha: str | None = None, pausa: float = 2.0, clie
                     f"No se halló en la página de metodología el texto esperado para '{k}'.",
                     URL_METODOLOGIA, fecha, snap, "MEDIO", "Revisar manualmente la metodología publicada.", URL_METODOLOGIA))
     else:
-        incid_extra.append(_incidencia(
-            "GLOBAL", "metodologia", rm.tipo_error, f"No se pudo leer la metodología: {rm.detalle}",
-            URL_METODOLOGIA, fecha, snap, "ALTO", ACCION_POR_TIPO.get(rm.tipo_error, "Reintentar."), URL_METODOLOGIA))
+        incid_extra.append(_inc_respuesta("GLOBAL", rm, fecha, snap, "metodologia"))
 
     # 3) Municipios.
-    resultados = [procesar_municipio(cli, c, enlaces, fecha, snap, err_portada) for c in sel]
+    resultados = [procesar_municipio(cli, c, desc, fecha, snap) for c in sel]
     resumen = N.aplicar(resultados, fuentes_extra, incid_extra, fecha, snap,
                         ids_procesados=[c["municipio_id"] for c in sel],
                         dir_actual=dir_actual or C.DIR_ACTUAL, dir_historico=dir_historico or C.DIR_HISTORICO)
+    ev = getattr(cli, "eventos", [])
+    bloqueos = {"ACCESO_DENEGADO_HTTP", "LIMITE_SOLICITUDES_429", "PROHIBIDO_POR_ROBOTS", "ROBOTS_NO_VERIFICABLE",
+                "ACCESO_BLOQUEADO_RED", "REDIRECCION_EXTERNA"}
     resumen.update({
         "snapshot_id": snap, "fecha": fecha, "solicitudes_http": cli.n_solicitudes,
-        "municipios": {r["municipio"]["municipio"]: {"estado": r["estado"], "campos_extraidos": r["campos"]} for r in resultados},
+        "solicitudes_exitosas": sum(1 for e in ev if e["ok"]),
+        "respuestas_bloqueadas": sum(1 for e in ev if e["tipo_error"] in bloqueos),
+        "paginas_ausentes": sum(1 for e in ev if e["tipo_error"] == "PAGINA_AUSENTE"),
+        "otros_errores": sum(1 for e in ev if not e["ok"] and e["tipo_error"] not in bloqueos | {"PAGINA_AUSENTE"}),
+        "municipios_con_datos": sum(1 for r in resultados if r["campos"] > 0),
+        "detalle_solicitudes": ev,
+        "municipios": {r["municipio"]["municipio"]: {
+            "estado": r["estado"], "campos_extraidos": r["campos"], "http": r["http"], "url_origen": r["url_origen"],
+            "incidencias": sorted({i["tipo_incidencia"] for i in r["incidencias"]})} for r in resultados},
     })
     return resumen
+
+
+def informe_ejecucion(res: dict) -> str:
+    """Informe Markdown de la ejecución (separa éxito, bloqueo, ausencia y datos extraídos)."""
+    l = [f"# Informe de ejecución {res['fecha']} (`{res['snapshot_id']}`)\n",
+         "| Concepto | Cantidad |", "|---|---|",
+         f"| Solicitudes a páginas con éxito | {res['solicitudes_exitosas']} |",
+         f"| Respuestas bloqueadas o restringidas (403/429/robots/red) | {res['respuestas_bloqueadas']} |",
+         f"| Páginas ausentes (404/410) | {res['paginas_ausentes']} |",
+         f"| Otros errores | {res['otros_errores']} |",
+         f"| Municipios con datos efectivamente extraídos | {res['municipios_con_datos']} de {len(res['municipios'])} |",
+         f"| Solicitudes HTTP totales (incluye robots.txt) | {res['solicitudes_http']} |", "",
+         "## Por municipio\n", "| Municipio | Estado | Campos | HTTP | Origen URL | Incidencias |", "|---|---|---|---|---|---|"]
+    for n, m in res["municipios"].items():
+        l.append(f"| {n} | {m['estado']} | {m['campos_extraidos']} | {m['http'] or ''} | {m['url_origen']} | "
+                 f"{', '.join(m['incidencias']) or '-'} |")
+    return "\n".join(l) + "\n"
 
 
 def main(argv=None) -> int:
@@ -503,13 +652,15 @@ def main(argv=None) -> int:
                     help="ids/nombres separados por coma, o 'todos'")
     ap.add_argument("--fecha", default=None, help="AAAA-MM-DD (por defecto, hoy UTC)")
     ap.add_argument("--pausa", type=float, default=2.0, help="segundos mínimos entre solicitudes")
+    ap.add_argument("--informe-ejecucion", type=Path, default=None, help="escribe el informe de la ejecución en Markdown")
     ap.add_argument("--registrar-bloqueo", metavar="DETALLE", default=None,
                     help="no consulta la red: registra incidencias de acceso bloqueado con este detalle")
     a = ap.parse_args(argv)
     cli = ClienteBloqueado(a.registrar_bloqueo) if a.registrar_bloqueo else None
     res = ejecutar(a.municipios, a.fecha, a.pausa, cliente=cli)
-    import json
     print(json.dumps(res, ensure_ascii=False, indent=2))
+    if a.informe_ejecucion:
+        a.informe_ejecucion.write_text(informe_ejecucion(res), encoding="utf-8")
     return 0
 
 

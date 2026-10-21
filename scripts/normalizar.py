@@ -54,13 +54,13 @@ def fusionar_indicadores(existentes: list[dict], nuevas: list[dict]) -> list[dic
         datos.pop("municipio_id", None)
         if not datos:
             continue  # captura vacía (falla temporal): no se agrega
-        previas = [r for r in res if r["municipio_id"] == n["municipio_id"]]
-        if previas:
-            ult = previas[-1]
-            ult_datos = {k: v for k, v in ult.items() if k not in VOLATILES and k != "url_fuente" and not _vacio(v)}
-            ult_datos.pop("municipio_id", None)
-            if ult_datos == datos:
-                continue  # sin cambios reales
+        base: dict[str, str] = {}  # último valor no vacío conocido por campo (las ausencias no cuentan como cambio)
+        for r in res:
+            if r["municipio_id"] == n["municipio_id"]:
+                base.update({k: v for k, v in r.items() if k not in VOLATILES and k != "url_fuente" and not _vacio(v)})
+        base.pop("municipio_id", None)
+        if base and all(base.get(k) == v for k, v in datos.items()):
+            continue  # nada nuevo respecto de lo ya conocido
         res.append({k: _s(v) for k, v in n.items()})
     return res
 
