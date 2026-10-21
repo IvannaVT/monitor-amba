@@ -1,0 +1,87 @@
+name: Relevar contactos institucionales AMBA
+
+# Directorio de vinculación: independiente de la extracción de indicadores (actualizar_amba.yml).
+# Solo ejecución manual. No se programa ni se commitea automáticamente.
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "prueba = municipios indicados; completo = los 40 con sitio oficial configurado"
+        type: choice
+        options: [prueba, completo]
+        default: prueba
+      municipios:
+        description: "Solo modo prueba: ids o nombres separados por coma"
+        type: string
+        default: "avellaneda,vicente_lopez,tres_de_febrero"
+      confirmar_cambios:
+        description: "Si es true, commitea 03/05/06/08 a la rama ejecutada (solo si hubo cambios)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: datos-amba          # los dos workflows escriben 05/06/08: se ejecutan de a uno
+  cancel-in-progress: false
+
+jobs:
+  contactos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write   # solo se usa si confirmar_cambios=true
+    env:
+      MODO: ${{ inputs.modo }}
+      MUNICIPIOS: ${{ inputs.municipios }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Pruebas unitarias (offline, datos sintéticos)
+        run: python -m pytest -q
+
+      - name: Relevar contactos (robots.txt, pausa de 2 s, solo sitios oficiales configurados)
+        run: |
+          if [ "$MODO" = "completo" ]; then SEL="todos"; else SEL="$MUNICIPIOS"; fi
+          if ! printf '%s' "$SEL" | grep -Eq '^[A-Za-z0-9_ áéíóúÁÉÍÓÚñÑ,.]+$'; then echo "Selección inválida"; exit 1; fi
+          python scripts/contactos.py --municipios "$SEL" --informe docs/informe_contactos.md --diagnostico diagnostico_contactos | tee contactos.json
+
+      - name: Validar CSV
+        run: python scripts/validar.py --modo prueba
+
+      - name: Resumen
+        if: always()
+        run: |
+          [ -f docs/informe_contactos.md ] && cat docs/informe_contactos.md >> "$GITHUB_STEP_SUMMARY"
+          python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import csv, collections
+          f = list(csv.DictReader(open("data/actual/06_amba_incidencias.csv", encoding="utf-8-sig"), delimiter=";"))
+          c = collections.Counter(r["tipo_incidencia"] for r in f if r["campo"].startswith("contacto:") and r["estado_resolucion"] == "ABIERTA")
+          print("\n### Incidencias de contactos abiertas\n" + ("\n".join(f"- `{k}`: {v}" for k, v in c.most_common()) or "- ninguna"))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monitor-amba-contactos
+          path: |
+            data/
+            docs/informe_contactos.md
+            contactos.json
+            diagnostico_contactos/
+
+      - name: Commit solo si hay cambios reales
+        if: ${{ inputs.confirmar_cambios }}
+        run: |
+          git config user.name "monitor-amba-bot"
+          git config user.email "monitor-amba-bot@users.noreply.github.com"
+          git add data docs/informe_contactos.md
+          if git diff --cached --quiet; then echo "Sin cambios reales; no se commitea."; exit 0; fi
+          git commit -m "datos: directorio de vinculación ($MODO)"
+          git push

@@ -4,3 +4,5 @@ __pycache__/
 extraccion.json
 informe_ejecucion.md
 diagnostico/
+diagnostico_contactos/
+contactos.json
