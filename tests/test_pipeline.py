@@ -1,4 +1,5 @@
 """Pruebas offline con fixtures SINTETICOS (tests/fixtures). No usan la red."""
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -289,7 +290,12 @@ def test_config_incluye_las_tres_urls_verificadas():
     assert u["ba_avellaneda"] == BASE + "/m/avellaneda/"
     assert u["ba_vicente_lopez"] == BASE + "/m/vicente-lopez/"
     assert u["ba_tres_de_febrero"] == BASE + "/m/tres-de-febrero/"
-    assert sum(1 for v in u.values() if v) == 3
+    # Config actual: 40 municipios, cada uno con su URL de ficha (únicas, bajo /m/) y su INDEC del portal (06xxx, único).
+    cfg = C.cargar_municipios_cfg()
+    assert len(cfg) == 40 and all(re.fullmatch(re.escape(BASE) + r"/m/[a-z0-9\-]+/", v) for v in u.values())
+    assert len(set(u.values())) == 40
+    codigos = [m["indec_codigo"] for m in cfg]
+    assert all(re.fullmatch(r"06\d{3}", c) for c in codigos) and len(set(codigos)) == 40
 
 
 def test_parsing_json_embebido_y_etiquetas_no_reconocidas():
