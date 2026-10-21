@@ -46,6 +46,14 @@ _RX_FRASES = {d["clave"]: re.compile(r"\b(?:" + "|".join(re.escape(f) for f in d
 
 RE_EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
 RE_TEL = re.compile(r"(?i)(?:tel(?:[eé]fono)?s?|conmutador|l[ií]nea|fono)\.?\s*[:\-]?\s*((?:\+?54\s*)?[\d\s().\-/]{6,34}\d)")
+RE_EMERGENCIA = re.compile(r"(?i)emergenc|bombero|polic[ií]a|\bsame\b|ambulancia|defensa civil|violencia|\b911\b|guardia")
+# Líneas de emergencia y atención nacional: nunca son un canal institucional municipal.
+NUMEROS_NO_MUNICIPALES = {"911", "100", "101", "102", "103", "105", "106", "107", "108", "144", "145", "136", "137"}
+RE_CORTO = re.compile(r"(?i)(?:l[ií]nea|llam[aá](?:\s+al)?|tel(?:[eé]fono)?s?|atenci[oó]n\s+(?:al\s+vecino|ciudadana)|n[uú]mero\s+municipal)"
+                      r"\D{0,18}?(?<!\d)(1\d{2})(?!\d)")
+RE_ETIQUETA_CORTA = re.compile(r"(?i)l[ií]nea|llam[aá]|tel(?:[eé]fono)?|atenci[oó]n|n[uú]mero\s+municipal|reclamos|consultas")
+RE_SUSCRIPCION = re.compile(r"suscrib|suscripci|newsletter|boletin|novedades|mailing|recibi")
+GENERAL_FRASES = ["atencion al vecino", "atencion ciudadana", "linea municipal", "consultas y reclamos", "contactanos", "contacto"]
 RE_MOVIL = re.compile(r"(?i)\b(?:cel(?:ular)?|m[oó]vil|whats\s?app|wsp)\b")
 RE_INT = re.compile(r"(?i)\b(?:int(?:erno)?s?\.?|anexo)\s*[:.]?\s*(\d{2,5}(?:\s*(?:,|y)\s*\d{2,5})*)")  # "/" separa teléfonos, no internos
 RE_DIR = re.compile(r"(?i)(?:direcci[oó]n|domicilio|ubicaci[oó]n)\s*[:\-]\s*([^\n|]{6,140})")
@@ -57,6 +65,9 @@ HONORIFICOS = re.compile(r"^(?:(?:lic|dr|dra|prof|arq|ing|cdor|cdora|cr|abog|sr|
 _NO_ES_NOMBRE = {"secretaria", "secretario", "direccion", "director", "subsecretaria", "protocolo", "ceremonial", "relaciones",
                  "institucionales", "institucional", "privada", "despacho", "gabinete", "concejo", "deliberante", "honorable",
                  "municipalidad", "municipio", "intendente", "intendenta", "mesa", "entradas", "atencion", "contacto",
+                 "obras", "publicas", "publica", "cultura", "deportes", "salud", "educacion", "desarrollo", "social", "hacienda", "gobierno",
+                 "seguridad", "turismo", "ambiente", "produccion", "servicios", "tramites", "modernizacion", "planeamiento",
+                 "urbanismo", "juventud", "genero", "mujeres", "empleo", "transporte", "transito", "comunicacion", "prensa", "legal", "tecnica",
                  "telefono", "correo", "mail", "email", "horario", "legislativa", "administrativa", "presidencia", "jefatura"}
 _PARTICULAS_OK = {"de", "del", "la", "las", "los", "y", "da", "das", "do", "dos", "di", "van", "von"}
 _ZONAS_EXCLUIDAS = {"header", "nav", "footer", "aside"}
@@ -128,33 +139,74 @@ def _digitos(s: str) -> str:
     return re.sub(r"\D", "", s)
 
 
-def extraer_telefonos(nodo) -> tuple[list[str], int]:
-    """(teléfonos publicados con etiqueta de teléfono o tel:, cantidad de móviles/WhatsApp omitidos)."""
-    lineas = [ln for ln in nodo.get_text("\n", strip=True).split("\n")]
+def _equivalentes(texto: str, href: str) -> bool:
+    """¿El número visible y el de tel: son el mismo (salvo prefijos 54/9/0/11)? Los cortos (<=4 dígitos) deben coincidir exactos."""
+    a_, b_ = _digitos(texto), _digitos(href)
+    if len(a_) <= 4 or len(b_) <= 4:
+        return a_ == b_
+    corto, largo = sorted((a_, b_), key=len)
+    return largo.endswith(corto) and len(largo) - len(corto) <= 5
+
+
+def extraer_telefonos(nodo, general: bool = False) -> tuple[list[str], int]:
+    """(teléfonos publicados con etiqueta o tel:, cantidad de móviles/WhatsApp/emergencias omitidos).
+
+    Líneas con emergencias (911, bomberos, policía, SAME...) y las líneas nacionales de la lista NUMEROS_NO_MUNICIPALES nunca se
+    registran. Los números cortos (p. ej. 147) solo se aceptan como contacto general (`general=True`) y con etiqueta explícita.
+    """
     res, omitidos, vistos = [], 0, set()
 
-    def agregar(t: str) -> None:
+    def agregar(t: str, corto: bool = False) -> None:
         d = _digitos(t)
-        if 6 <= len(d) <= 13 and d not in vistos and not re.fullmatch(r"\d{2}-?\d{8}-?\d", t.strip()):
+        ok = (3 == len(d) and corto and d not in NUMEROS_NO_MUNICIPALES) or \
+             (6 <= len(d) <= 13 and not re.fullmatch(r"\d{2}-?\d{8}-?\d", t.strip()))
+        if ok and d not in vistos:
             vistos.add(d)
             res.append(re.sub(r"\s+", " ", t).strip(" -/.,"))
-    for ln in lineas:
-        if RE_MOVIL.search(ln):
+    for ln in nodo.get_text("\n", strip=True).split("\n"):
+        for seg in re.split(r"\s*(?:\||•|·|;|–|—)\s*", ln):       # "Atención al vecino: 147 – Emergencias: 911"
+            if RE_MOVIL.search(seg):
+                omitidos += 1
+                continue
+            if RE_EMERGENCIA.search(seg):
+                omitidos += 1
+                continue
+            for m in RE_TEL.finditer(seg):
+                resto = RE_INT.sub(" ", seg[m.start(1):])      # tras la etiqueta: "4201-0001 int. 123 / 4201-0002"
+                for parte in re.split(r"\s*/\s*", resto):
+                    if not (n := re.match(r"\s*((?:\+?54\s*)?[\d\s().\-]{6,30}\d)", parte)):
+                        break                                   # una parte sin número corta la lista
+                    agregar(n.group(1))
+            if general and (c := RE_CORTO.search(seg)):
+                agregar(c.group(1), corto=True)
+    for a in nodo.find_all("a", href=True):
+        if not a["href"].lower().startswith("tel:"):
+            continue
+        visible, destino = a.get_text(" ", strip=True), a["href"][4:].split(";")[0]
+        ctx = a.parent.get_text(" ", strip=True) if a.parent is not None else visible
+        ctx = ctx if len(ctx) <= 60 else visible          # etiqueta que acompaña al enlace (solo si el contenedor es chico)
+        seg = next((x for x in re.split(r"\s*(?:\||•|·|;|–|—)\s*", ctx) if visible and visible in x), ctx)
+        meta = " ".join([visible, a.get("aria-label", ""), a.get("title", ""), seg])
+        if RE_MOVIL.search(meta) or RE_EMERGENCIA.search(meta):
             omitidos += 1
             continue
-        for m in RE_TEL.finditer(ln):
-            resto = RE_INT.sub(" ", ln[m.start(1):])      # tras la etiqueta: "4201-0001 int. 123 / 4201-0002"
-            for parte in re.split(r"\s*[/;|]\s*", resto):
-                if not (n := re.match(r"\s*((?:\+?54\s*)?[\d\s().\-]{6,30}\d)", parte)):
-                    break                                   # una parte sin número corta la lista
-                agregar(n.group(1))
+        publicado = visible if len(_digitos(visible)) >= 3 else destino                    # prevalece el texto publicado
+        if len(_digitos(publicado)) == 3 and not (general and RE_ETIQUETA_CORTA.search(seg)):
+            continue                                                                       # número corto sin etiqueta de atención
+        agregar(publicado, corto=general)
+    return res, omitidos
+
+
+def telefonos_discrepantes(nodo) -> list[tuple[str, str]]:
+    """(texto visible, número del enlace tel:) cuando el enlace no coincide con el texto que lo contiene."""
+    out = []
     for a in nodo.find_all("a", href=True):
         if a["href"].lower().startswith("tel:"):
-            if RE_MOVIL.search(a.get_text(" ")):
-                omitidos += 1
-            else:
-                agregar(a["href"][4:])
-    return res, omitidos
+            visible, destino = a.get_text(" ", strip=True), a["href"][4:].split(";")[0]
+            if len(_digitos(visible)) >= 3 and _digitos(destino) and not _equivalentes(visible, destino) \
+                    and not RE_MOVIL.search(visible + destino) and _digitos(destino) not in NUMEROS_NO_MUNICIPALES:
+                out.append((re.sub(r"\s+", " ", visible)[:40], re.sub(r"\s+", " ", destino)[:30]))
+    return out
 
 
 def extraer_internos(texto: str) -> list[str]:
@@ -177,15 +229,26 @@ def extraer_horario(texto: str) -> str:
     return m.group(1).strip(" .;") if m else ""
 
 
+def _es_suscripcion(texto: str) -> bool:
+    return bool(RE_SUSCRIPCION.search(norm(texto)))
+
+
 def extraer_formulario(nodo, url: str) -> str:
+    """URL de un formulario de CONTACTO. Los de suscripción/novedades (newsletter) no son un canal de contacto: se ignoran."""
+    for f in nodo.find_all("form"):
+        meta = " ".join([f.get_text(" ", strip=True), f.get("id", ""), " ".join(f.get("class") or []), f.get("action", "")] +
+                        [f"{i.get('name', '')} {i.get('placeholder', '')} {i.get('value', '')} {i.get('type', '')}"
+                         for i in f.find_all(["input", "button", "textarea"])])
+        if _es_suscripcion(meta):
+            continue
+        if f.find("textarea") or re.search(r"mensaje|consulta|asunto|comentario", norm(meta)):
+            return url
     for a in nodo.find_all("a", href=True):
         h = a["href"]
-        if h.lower().startswith(("mailto:", "tel:", "#", "javascript:")):
+        if h.lower().startswith(("mailto:", "tel:", "#", "javascript:")) or _es_suscripcion(a.get_text(" ") + " " + h):
             continue
         if re.search(r"formulario|contact[aá]nos|escrib[ií]nos|consultas?", norm(a.get_text(" ")) + " " + norm(h)):
             return urljoin(url, h).split("#")[0]
-    if nodo.find("form") and nodo.find("textarea"):
-        return url
     return ""
 
 
@@ -201,6 +264,47 @@ def _nombre_valido(cand: str) -> str:
         return ""
     v, _ = P.validar_valor("intendente_nombre_completo", c)
     return v or ""
+
+
+_ROL_TITULO = {"h1", "h2", "h3", "h4", "h5", "h6", "strong", "b", "dt", "th"}
+_HERMANOS_OK = {"p", "div", "span", "small", "em", "strong", "b", "dd", "td"}
+_INLINE = {"strong", "b", "span", "em", "i", "u", "small", "a", "label"}
+
+
+def responsable_tras_titulo(el) -> tuple[str, str, str]:
+    """Persona publicada justo después del título de la oficina (h3 + p, dt + dd, strong + texto...), con o sin canal.
+
+    Solo se toman hermanos de tipo texto/párrafo (no li, a ni ul: menús) y nombres válidos; el título de la oficina,
+    una descripción o el nombre de otra oficina nunca se toman como responsable.
+    """
+    if el.name not in _ROL_TITULO:
+        return "", "", ""
+    bases_ = [el] + ([el.parent] if el.name in _INLINE and el.parent is not None and el.parent.name not in ("body", "html") else [])
+    for base in bases_:
+        cargo_pend = ""
+        for sib in list(base.next_siblings)[:6]:
+            if isinstance(sib, str):
+                txt, tag = re.sub(r"\s+", " ", sib).strip(), "text"
+            else:
+                txt, tag = sib.get_text(" ", strip=True), sib.name
+                if tag == "br":
+                    continue
+                if tag in ("h1", "h2", "h3", "h4", "h5", "h6") or tag not in _HERMANOS_OK:
+                    break
+            if not txt:
+                continue
+            if len(txt) > 120 or deps_en(norm(txt)):
+                break
+            cargo, cand = (txt.partition(":")[0], txt.partition(":")[2]) if ":" in txt else (cargo_pend, txt)
+            if ":" in txt and not RE_CARGO.match(cargo):
+                cargo, cand = "", txt
+            if nombre := _nombre_valido(cand):
+                return nombre, (cargo or cargo_pend).strip()[:80], txt
+            if RE_CARGO.match(txt) and ":" not in txt:
+                cargo_pend = txt              # "Jefe de Gabinete" y, en el hermano siguiente, la persona
+                continue
+            break
+    return "", "", ""
 
 
 def extraer_responsable(lineas: list[str]) -> tuple[str, str, str]:
@@ -239,14 +343,14 @@ def _tiene_contacto(nodo) -> bool:
     return bool(RE_EMAIL.search(t) or RE_TEL.search(t))
 
 
-def _canales(nodo, url: str, bases: set[str]) -> dict:
+def _canales(nodo, url: str, bases: set[str], general: bool = False) -> dict:
     texto = nodo.get_text("\n", strip=True)
     emails, om_mail = extraer_emails(nodo, bases)
-    tels, om_tel = extraer_telefonos(nodo)
+    tels, om_tel = extraer_telefonos(nodo, general)
     nombre, cargo, orig = extraer_responsable(texto.split("\n"))
     return dict(emails=emails, telefonos=tels, internos=extraer_internos(texto), direccion=extraer_direccion(texto),
                 horario=extraer_horario(texto), formulario=extraer_formulario(nodo, url), responsable=nombre, cargo=cargo,
-                responsable_original=orig, omitidos={"email_no_institucional": om_mail, "telefono_movil": om_tel})
+                responsable_original=orig, discrepancias=telefonos_discrepantes(nodo), omitidos={"email_no_institucional": om_mail, "telefono_movil": om_tel})
 
 
 def texto_seguro(nodo, bases: set[str], maximo: int = 240) -> str:
@@ -297,25 +401,54 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
                         bloque = nodo
                     break  # con 2+ dependencias en el bloque la atribución es ambigua: no se atribuye
                 nodo = nodo.parent
-            h = dict(clave=clave, etiqueta=txt[:120], url=url, con_canal=False, evidencia=_texto_seguro_str(txt, bases, 160))
+            h = dict(clave=clave, etiqueta=txt[:120], url=url, con_canal=False, evidencia=_texto_seguro_str(txt, bases, 160),
+                     responsable="", cargo="", responsable_original="")
             if bloque is not None:
                 c = _canales(bloque, url, bases)
                 if _hay_canal(c):
                     h.update(c, con_canal=True, evidencia=texto_seguro(bloque, bases))
+            if not h["responsable"]:   # organigramas: h3 con el nombre de la oficina y, debajo, un párrafo con la persona
+                h["responsable"], h["cargo"], h["responsable_original"] = responsable_tras_titulo(el)
             hallazgos.append(h)
-    # Contacto general: pie de página y bloques "contacto"; o toda la página si es una página de contacto.
-    zonas = [z for z in soup.find_all(["footer"])] + [
-        z for z in soup.find_all(attrs={"class": re.compile(r"contact", re.I)}) + soup.find_all(attrs={"id": re.compile(r"contact", re.I)})
-        if not deps_en(norm(z.get_text(" ", strip=True)))]
+    # Contacto general: encabezado/pie/lateral, bloques "contacto", bloques "Atención al vecino"..., o toda la página si es de contacto.
+    zonas = list(soup.find_all(["header", "footer", "aside", "nav"]))
+    zonas += [z for z in soup.find_all(attrs={"class": re.compile(r"contact", re.I)}) + soup.find_all(attrs={"id": re.compile(r"contact", re.I)})
+              if not deps_en(norm(z.get_text(" ", strip=True)))]
+    for el in soup.find_all(True)[:8000]:
+        if el.name in ("html", "body", "head"):
+            continue
+        t_ = el.get_text(" ", strip=True)
+        if not t_ or len(t_) > 160 or not any(f in norm(t_) for f in GENERAL_FRASES):
+            continue
+        nodo_ = el
+        for _ in range(4):
+            if nodo_ is None or nodo_.name in ("body", "html"):
+                break
+            tt = nodo_.get_text(" ", strip=True)
+            if len(tt) > 1200 or deps_en(norm(tt)):
+                break
+            if _tiene_contacto(nodo_):
+                zonas.append(nodo_)
+                break
+            nodo_ = nodo_.parent
     if re.search(r"contact", urlparse(url).path, re.I) and soup.body:
         zonas.append(soup.body)
     general = None
     for z in zonas:
-        c = _canales(z, url, bases)
-        if _hay_canal(c):
-            general = dict(c, clave="contacto_general", etiqueta="Contacto general (pie/página de contacto)", url=url,
+        c = _canales(z, url, bases, general=True)
+        if not _hay_canal(c):
+            continue
+        if general is None:
+            general = dict(c, clave="contacto_general", etiqueta="Contacto general (portada/pie/página de contacto)", url=url,
                            con_canal=True, evidencia=texto_seguro(z, bases))
-            break
+        else:                                    # varias zonas de la misma página: se unen sin repetir
+            for k in ("emails", "telefonos", "internos"):
+                general[k] += [x for x in c[k] if x not in general[k]]
+            general["discrepancias"] += [d for d in c["discrepancias"] if d not in general["discrepancias"]]
+            for k in ("direccion", "horario", "formulario"):
+                general[k] = general[k] or c[k]
+            for k, v in c["omitidos"].items():
+                general["omitidos"][k] = general["omitidos"].get(k, 0) + v
     fecha = ""
     if m := RE_ACTUALIZADO.search(soup.get_text(" ", strip=True)):
         fecha = P.parse_fecha(m.group(1)) or ""

@@ -70,3 +70,11 @@ Fuentes políticas oficiales (intendentes, HCD, contactos), CABA, matriz integra
 - Hay municipios homónimos en otras provincias (p. ej. `avellaneda.gob.ar` es Avellaneda, Santa Fe). `DOMINIOS_HOMONIMOS` (en `contactos_parser.py`) bloquea esos dominios aunque el sitio esté `CONFIRMADO` (`SITIO_HOMONIMO`), y también las páginas que se declaran de otra provincia ("Provincia de X" sin "Provincia de Buenos Aires"). Un homónimo no puede ser destino de redirección ni figurar en `dominios_verificados`, y sus correos no se aceptan.
 - `validar.py` revisa `config/sitios_oficiales.csv`: https, un dominio por municipio, sin homónimos, `CONFIRMADO` con fuente.
 - La evidencia que se guarda (`03.evidencia`, `05.observaciones`) se sanea: los correos no institucionales y las líneas de móvil/WhatsApp se reemplazan por una marca; lo omitido no reaparece en ningún CSV.
+
+### Contacto general, responsables y formularios (ajustes del piloto)
+- **Contacto general.** Se reconoce en encabezado/pie/lateral, bloques "contacto" y bloques "Atención al vecino / línea municipal", y se registra como `Contacto institucional general` (`CONTACTO_ALTERNATIVO`), nunca como Ceremonial u otra dependencia. Números cortos municipales (p. ej. 147) solo ahí y con etiqueta explícita.
+- **Emergencias.** Nunca se registran 911, 100, 101, 102, 103, 105, 106, 107, 108, 144, 145, 136, 137 ni líneas con "emergencias", bomberos, policía, SAME o violencia (validador incluido).
+- **Texto vs. `tel:`.** Prevalece el número publicado (texto visible); si el enlace difiere, queda la incidencia `TELEFONO_DISCREPANCIA` con ambos valores.
+- **Responsables.** Además del bloque con canal, se toma la persona publicada justo después del título de la oficina (h3 + p, dt + dd, `strong` + texto), con o sin correo/teléfono: la dependencia queda `DEPENDENCIA_SIN_CANAL` con el responsable, su fuente en `05` y vigencia sin confirmar. Solo hermanos de tipo párrafo/texto y nombres válidos (los menús, sub-listas y descripciones no son personas); el nombre de la oficina nunca va al campo del responsable.
+- **Formularios.** Los de suscripción/novedades (newsletter) no son un canal de contacto y se ignoran; solo cuenta un formulario de consulta/mensaje.
+- **TLS.** Un error de certificado en `robots.txt` sigue siendo `ROBOTS_NO_VERIFICABLE` (sin desactivar la verificación).

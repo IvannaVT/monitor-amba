@@ -229,8 +229,12 @@ def _agregar(hallazgos: list[dict]) -> dict:
     ag: dict[str, dict] = {}
     for h in hallazgos:
         a = ag.setdefault(h["clave"], dict(emails=[], telefonos=[], internos=[], direccion="", horario="", formulario="", responsable="",
-                                           cargo="", responsable_original="", urls=[], canales_por_url={}, fechas={}, hs=[], omitidos=0))
+                                           cargo="", responsable_original="", urls=[], canales_por_url={}, fechas={}, hs=[], omitidos=0,
+                                           discrepancias=[], resp_h=None))
         a["hs"].append(h)
+        if h.get("responsable") and not a["responsable"]:      # la persona publicada se conserva aunque no haya canal
+            a["responsable"], a["cargo"], a["responsable_original"], a["resp_h"] = h["responsable"], h.get("cargo", ""), h.get("responsable_original", ""), h
+        a["discrepancias"] += [d for d in h.get("discrepancias", []) if d not in a["discrepancias"]]
         if not h["con_canal"]:
             continue
         for k_src, k_dst in (("emails", "emails"), ("telefonos", "telefonos"), ("internos", "internos")):
@@ -284,7 +288,7 @@ def construir_filas(res: dict, fecha: str, snap: str) -> tuple[list[dict], list[
                 "sitio_web": (a["formulario"] or (a["urls"][0] if a["urls"] else "")) if a else "",
                 "url_fuente": E.url_segura(a["urls"][0]) if a and a["urls"] else (E.url_segura(a["hs"][0]["url"]) if a else ""),
                 "fecha_verificacion": fecha if con else "", "estado_contacto": estado, "snapshot_id": snap, "fecha_consulta": fecha,
-                "evidencia": (a["hs"][0]["evidencia"] if a and a["hs"] else "")[:240]}
+                "evidencia": (next((h["evidencia"] for h in a["hs"] if h["con_canal"] or h.get("responsable")), a["hs"][0]["evidencia"]) if a and a["hs"] else "")[:240]}
         filas.append(fila)
         if a is None and clave != "contacto_general":
             alt = "; canal alternativo: contacto institucional general / mesa de entradas" if clave in ("ceremonial", "relaciones") else ""
@@ -293,6 +297,16 @@ def construir_filas(res: dict, fecha: str, snap: str) -> tuple[list[dict], list[
         elif estado == "DEPENDENCIA_SIN_CANAL":
             incs.append(_inc(mid, clave, "CANAL_NO_ENCONTRADO", f"'{d['dependencia']}' figura en el sitio pero sin correo/teléfono atribuible a su bloque.",
                              a["hs"][0]["url"], fecha, snap, "MEDIO", "Buscar el canal en otra sección oficial o por pedido formal."))
+        if a and a["responsable"]:   # persona publicada: trazabilidad con o sin canal; vigencia sin confirmar
+            hr = a["resp_h"] or a["hs"][0]
+            fuentes.append(_fuente(mid, clave, "responsable_nombre_completo", a["responsable"], hr, fecha, snap, "MEDIO", titulos.get(hr["url"], "")))
+            if a["cargo"]:
+                fuentes.append(_fuente(mid, clave, "cargo", a["cargo"], hr, fecha, snap, "MEDIO", titulos.get(hr["url"], "")))
+        if a and a["discrepancias"]:
+            incs.append(_inc(mid, clave, "TELEFONO_DISCREPANCIA",
+                             "El texto visible y el enlace tel: no coinciden (se registró el texto publicado): " +
+                             "; ".join(f"'{t}' vs tel:{h}" for t, h in a["discrepancias"]), a["urls"][0] if a["urls"] else a["hs"][0]["url"],
+                             fecha, snap, "BAJO", "Confirmar cuál es el número vigente en la fuente oficial."))
         if a and a["omitidos"]:
             incs.append(_inc(mid, clave, "CANAL_NO_INSTITUCIONAL_OMITIDO",
                              f"{a['omitidos']} correo(s) de dominio no institucional o teléfono(s) móvil/WhatsApp publicados no se registraron.",
@@ -304,8 +318,7 @@ def construir_filas(res: dict, fecha: str, snap: str) -> tuple[list[dict], list[
                 fuentes.append(_fuente(mid, clave, "email_institucional", e, h0, fecha, snap, conf, titulos.get(h0["url"], "")))
             for t in a["telefonos"]:
                 fuentes.append(_fuente(mid, clave, "telefono_institucional", t, h0, fecha, snap, conf, titulos.get(h0["url"], "")))
-            for campo, val in (("responsable_nombre_completo", a["responsable"]), ("direccion", a["direccion"]),
-                               ("horario_atencion", a["horario"]), ("sitio_web", a["formulario"])):
+            for campo, val in (("direccion", a["direccion"]), ("horario_atencion", a["horario"]), ("sitio_web", a["formulario"])):
                 if val:
                     fuentes.append(_fuente(mid, clave, campo, val, h0, fecha, snap, conf, titulos.get(h0["url"], "")))
             if a["responsable"] and met == "no_separado":
@@ -345,6 +358,9 @@ def fusionar_contactos(existentes: list[dict], nuevas: list[dict]) -> tuple[list
             prev["estado_contacto"] = "PUBLICADO_SIN_VIGENCIA_CONFIRMADA"
         else:
             prev["estado_contacto"] = n["estado_contacto"]
+            for c in ("responsable_nombre", "responsable_apellido", "responsable_nombre_completo", "cargo", "evidencia", "url_fuente"):
+                if n.get(c):
+                    prev[c] = n[c]            # se actualiza la persona publicada; nunca se pisa con vacío
         prev["snapshot_id"], prev["fecha_consulta"] = n["snapshot_id"], n["fecha_consulta"]
     orden = {d["dependencia"]: i for i, d in enumerate([*CP.DEPENDENCIAS, CP.GENERAL])}
     return sorted(res.values(), key=lambda r: (r["municipio_id"], orden.get(r["dependencia"], 99), r["dependencia"])), eventos

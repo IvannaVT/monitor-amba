@@ -204,7 +204,11 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
             elif e_ not in contactos_traza.get(f["municipio_id"], set()):
                 err.append(f"{ref}: correo '{e_}' sin fila de trazabilidad en 05")
         for t_ in filter(None, (x.strip() for x in f["telefono_institucional"].split(";"))):
-            if not (6 <= len(re.sub(r"\D", "", t_)) <= 13) or re.search(r"[A-Za-z]", t_):
+            d_ = re.sub(r"\D", "", t_)
+            corto_ok = len(d_) == 3 and f["dependencia"] == "Contacto institucional general" and d_ not in _CP.NUMEROS_NO_MUNICIPALES
+            if d_ in _CP.NUMEROS_NO_MUNICIPALES:
+                err.append(f"{ref}: '{t_}' es una línea de emergencia/nacional, no un canal institucional")
+            elif not (6 <= len(d_) <= 13 or corto_ok) or re.search(r"[A-Za-z]", t_):
                 err.append(f"{ref}: teléfono inválido '{t_}'")
             elif t_ not in contactos_traza.get(f["municipio_id"], set()):
                 err.append(f"{ref}: teléfono '{t_}' sin fila de trazabilidad en 05")
