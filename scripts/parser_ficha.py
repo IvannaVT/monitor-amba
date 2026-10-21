@@ -72,11 +72,12 @@ CAMPOS_EN_01 = [
 # Campos de la ficha que van a 01 (identificación / intendente), con su tipo de valor.
 CAMPOS_FICHA_01 = {
     "intendente_nombre_completo": "nombre", "partido_politico": "txt", "frente_electoral": "txt",
-    "coalicion_actual": "txt", "fecha_asuncion": "fecha", "poblacion_2022": "poblacion", "seccion_electoral": "txt",
+    "coalicion_actual": "txt", "intendente_condicion": "txt", "fecha_asuncion": "fecha", "poblacion_2022": "poblacion", "seccion_electoral": "txt",
 }
 TIPOS: dict[str, str] = {c: d["tipo"] for c, d in CAMPOS_PORTAL.items()}
 TIPOS.update(CAMPOS_FICHA_01)
 TIPOS[CAMPO_FECHA_PORTAL[0]] = "fecha"
+TIPOS["cargos_presupuestados"] = "int"  # solo trazabilidad (05): 04 no tiene columna para cargos
 PCT = {"cobertura_agua_pct", "cobertura_cloacas_pct", "cobertura_gas_pct"}
 PUNTAJES = {"indice_global", "transparencia_puntaje", "transparencia_relevamiento_propio", "transparencia_asap",
             "servicios_seguridad_puntaje", "seguridad_puntaje", "control_puntaje"}
@@ -88,11 +89,11 @@ _EXTRA = [
     ("transparencia_relevamiento_propio", [], [("relevamiento propio",), ("transparencia activa",)], (), False),
     ("transparencia_asap", [], [("asap",), ("transparencia fiscal",)], (), False),
     ("servicios_seguridad_puntaje", [], [("servicios", "seguridad")], (), False),
-    ("seguridad_puntaje", ["indice de seguridad", "pilar seguridad"], [], (), False),
-    ("homicidios_tasa_100k", [], [("homicidios", "tasa"), ("tasa", "homicid"), ("homicidios", "100")], (), False),
+    ("seguridad_puntaje", ["indice de seguridad", "pilar seguridad"], [("seguridad", "puntaje")], (), False),
+    ("homicidios_tasa_100k", [], [("homicidios", "tasa"), ("tasa", "homicid"), ("homicidios", "100"), ("homicidios",)], (), False),
     ("victimas_homicidio_ultimo_anio", [], [("victimas",)], (), False),
     ("ranking_pares", [], [("ranking", "grupo"), ("ranking", "pares"), ("posicion", "grupo"), ("puesto", "grupo"),
-                           ("posicion", "pares"), ("entre", "pares")], (), False),
+                           ("posicion", "pares")], (), False),
     ("ranking_provincial", ["ranking", "posicion", "puesto"], [("ranking", "provinc"), ("posicion", "provinc"),
                                                               ("puesto", "provinc"), ("en la provincia",)], ("datos clave",), False),
     ("transparencia_semaforo", [], [("semaforo",)], (), False),
@@ -109,7 +110,13 @@ _EXTRA = [
     ("fecha_asuncion", ["desde"], [], ("intendente",), True),
     ("poblacion_2022", ["habitantes"], [("poblacion",)], ("datos clave",), False),
     ("seccion_electoral", ["seccion"], [("seccion electoral",)], (), False),
+    ("cobertura_cloacas_pct", [], [("cloacas",)], (), False),
+    ("gasto_por_habitante", [], [("gasto", "habitante")], (), False),
+    ("empleados_municipales", [], [("empleados", "municipales")], (), False),
+    ("ultimo_fallo_htc", [], [("ultimo", "fallo")], (), False),
+    ("intendente_nombre_completo", [], [("intendente",), ("intendenta",)], (), False),
 ]
+IGNORAR_SECCIONES = ("partidos para comparar", "fuentes")  # datos de otros municipios / citas: no se interpretan
 REGLAS: list[dict] = []
 for _c, _d in CAMPOS_PORTAL.items():
     REGLAS.append(dict(campo=_c, igual={C.normalizar_texto(x) for x in _d["sin"]}, contiene=[], secciones=(), solo=False))
@@ -146,7 +153,7 @@ def clasificar(etiqueta: str, seccion_norm: str = "") -> str | None:
 
 # ---------------------------------------------------------------- valores
 _RUIDO = re.compile(r"^(?:/|de|sobre|/\s*100|de\s*100|sobre\s*100|puntos?|pts?\.?|-|–|—|•|·|\|)$", re.I)
-_NUM = re.compile(r"([+-]?\d[\d.]*(?:,\d+)?)\s*(%|puntos?|pts?\.?)?\s*(?:(?:/|de|sobre)\s*(\d+(?:[.,]\d+)?))?", re.I)
+_NUM = re.compile(r"\$?\s*([+-]?\d[\d.]*(?:,\d+)?)\s*(%|puntos?|pts?\.?)?\s*(?:(?:/|de|sobre)\s*(\d+(?:[.,]\d+)?))?", re.I)
 _RANK = re.compile(r"[#nN°º.\s]*(\d{1,4})\s*[°ºª.]*\s*(?:(?:de|/)\s*(\d{1,4}))?(?:\s+[A-Za-zñÑ ]{0,25})?")
 _CONTEO = re.compile(r"(\d{1,3}(?:\.\d{3})+|\d+)(?:\s*[A-Za-zñÑ.]{0,15})?")
 _NOMBRE = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ.'’\- ]{2,59}")
@@ -155,6 +162,78 @@ _NO_NOMBRE = {"partido", "frente", "intendente", "intendenta", "municipio", "ver
 _MESES = {m: i for i, m in enumerate(
     ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
      "septiembre", "octubre", "noviembre", "diciembre"], 1)}
+
+
+_PILAR = re.compile(r"\(\s*(\d+(?:,\d+)?)\s*%\s*del\s+[ií]ndice\s*\)\s*:\s*(\d+(?:[.,]\d+)?)\s*de\s*100\.?")
+
+
+def _c_homicidios(t: str, et: str):
+    m = re.match(r"^([\d.]+(?:,\d+)?)\s+cada\s+100\.?000\s+hab(?:itantes|\.)?(?:\s*\(\s*(\d[\d.]*)\s+v[ií]ctimas?\s+en\s+(\d{4})\s*\))?", t, re.I)
+    if not m and (simple := re.fullmatch(r"(\d+(?:,\d+)?)(?:\s*(?:por|cada|/)\s*100\.?000(?:\s*hab(?:itantes|\.)?)?)?", t, re.I)):
+        return {"homicidios_tasa_100k": C.parse_num(simple.group(1))}  # solo la tasa, sin víctimas
+    if not m or C.parse_num(m.group(1)) is None:
+        return None
+    d: dict = {"homicidios_tasa_100k": C.parse_num(m.group(1))}
+    if p := re.search(r"(\d{4}\s*-\s*\d{4})", et):
+        d["homicidios_periodo"] = re.sub(r"\s+", "", p.group(1))
+    if m.group(2):
+        d["victimas_homicidio_ultimo_anio"] = int(m.group(2).replace(".", ""))
+        d["victimas_homicidio_anio"] = int(m.group(3))
+    return d
+
+
+def _c_empleo(t: str, et: str):
+    """'4.125 (2026-08; empleados ocupados, ...)' vs '3.720 (2023; cargos presupuestados, ...)': nunca se mezclan."""
+    m = re.match(r"^\s*(\d{1,3}(?:\.\d{3})+|\d+)\s*\(\s*(\d{4}(?:-\d{2})?)\s*;\s*([^,;)]*)", t)
+    if not m:
+        return None
+    tipo, n = C.normalizar_texto(m.group(3)), int(m.group(1).replace(".", ""))
+    if "ocupad" in tipo:
+        return {"empleados_municipales": n, "tipo_dato_empleo": "EMPLEADOS_OCUPADOS", "empleo_periodo": m.group(2)}
+    if "presupuest" in tipo:  # no es personal efectivo: no va a empleados_municipales
+        return {"cargos_presupuestados": n, "tipo_dato_empleo": "CARGOS_PRESUPUESTADOS", "empleo_periodo": m.group(2)}
+    return None
+
+
+def _c_fallo(t: str, et: str):
+    v = t.strip().rstrip(".").strip()
+    if not v or len(v) > 120:
+        return None
+    d = {"ultimo_fallo_htc": v}
+    if y := re.search(r"\((\d{4})\)", et):
+        d["ejercicio_fallo_htc"] = y.group(1)
+    return d
+
+
+COMPUESTOS = {"homicidios_tasa_100k": _c_homicidios, "empleados_municipales": _c_empleo, "ultimo_fallo_htc": _c_fallo}
+
+
+def _p_intendente(m):
+    out = [("fecha_asuncion", m.group(1), "'en funciones desde' del portal")]
+    for i, p in enumerate(x.strip() for x in re.split(r"\s*[·•|]\s*", m.group(2)) if x.strip()):
+        if mf := re.match(r"(?i)frente\s+(.+)", p):
+            out.append(("frente_electoral", mf.group(1).strip(), ""))
+        elif mc := re.match(r"(?i)coalici[oó]n\s+(.+)", p):
+            out.append(("coalicion_actual", mc.group(1).strip(), ""))
+        elif i == 0:
+            out.append(("partido_politico", p, "primer elemento entre paréntesis del portal (el portal no distingue partido/frente)"))
+    return out
+
+
+def _p_seccion(m):
+    out = [("seccion_electoral", m.group(1), "")]
+    if m.group(2):
+        out.append(("grupo_comparacion", m.group(2).strip(), ""))
+    return out
+
+
+# Oraciones completas del portal que contienen varios datos (regex, función -> [(campo, valor, obs)]).
+PATRONES = [
+    (re.compile(r"^(\d+)\s+se[ñn]ales?\s+de\s+control", re.I), lambda m: [("señales_control", int(m.group(1)), "")]),
+    (re.compile(r"^,?\s*en funciones desde el (\d{4}-\d{2}-\d{2})\s*\((.+?)\)\.?\s*$", re.I), _p_intendente),
+    (re.compile(r"\(\s*secci[oó]n electoral\s+(\d+)(?:\s*,\s*grupo\s+([^)]+?))?\s*\)", re.I), _p_seccion),
+    (re.compile(r"^Datos actualizados al (\d{4}-\d{2}-\d{2})", re.I), lambda m: [("fecha_actualizacion_portal", m.group(1), "")]),
+]
 
 
 def es_ruido(t: str) -> bool:
@@ -190,12 +269,18 @@ def parse_fecha(v: str) -> str | None:
     return None
 
 
-def validar_valor(campo: str, token: str) -> tuple[object | None, str]:
+def validar_valor(campo: str, token: str, etiqueta: str = "") -> tuple[object | None, str]:
     """(valor normalizado, '') o (None, motivo del rechazo)."""
     tipo, t = TIPOS[campo], token.strip()
+    if campo in COMPUESTOS:  # un mismo texto aporta varios campos
+        d = COMPUESTOS[campo](t, etiqueta)
+        return (d, "") if d else (None, "formato compuesto no reconocido")
     if not t or len(t) > 160:
         return None, "vacío o demasiado largo"
     if tipo == "num":
+        if (mp := _PILAR.fullmatch(t)) and campo in PUNTAJES:  # "(50 % del índice): 50,0 de 100." -> 50,0 (el peso no es el puntaje)
+            num = C.parse_num(mp.group(2))
+            return (num, "") if num is not None and 0 <= num <= 100 else (None, "fuera de 0-100")
         m = _NUM.fullmatch(t)
         if not m:
             return None, "formato no numérico"
@@ -302,7 +387,10 @@ def _separar(txt: str) -> tuple[str, str | None]:
 
 
 def analizar_ficha(html: str) -> dict:
-    toks = tokenizar(html)
+    return analizar_tokens(tokenizar(html))
+
+
+def analizar_tokens(toks: list[tuple[str, bool]]) -> dict:
     n = len(toks)
     sec_ef: list[str] = []   # sección (texto original) vigente en cada fragmento
     sec_n: list[str] = []    # ídem normalizada; incluye títulos de sección sin etiqueta <hN>
@@ -318,13 +406,36 @@ def analizar_ficha(html: str) -> dict:
     rechazados: list[str] = []
     consumido: set[int] = set()
 
+    def ignorada(j: int) -> bool:
+        return any(x in sec_n[j] for x in IGNORAR_SECCIONES)
+
     def es_etiqueta(j: int) -> bool:
-        return not toks[j][1] and clasificar(_separar(toks[j][0])[0], sec_n[j]) is not None
+        return not toks[j][1] and not ignorada(j) and clasificar(_separar(toks[j][0])[0], sec_n[j]) is not None
+
+    def registrar(campo, valor, original, etiqueta, seccion, obs="", conf="MEDIO"):
+        if campo in hallados:
+            if hallados[campo]["valor"] != valor:
+                contradicciones.append({"campo": campo, "a": hallados[campo]["original"], "b": original,
+                                        "seccion_a": hallados[campo]["seccion"], "seccion_b": seccion})
+            return
+        hallados[campo] = {"valor": valor, "original": str(original).strip(), "etiqueta": str(etiqueta).strip(),
+                           "seccion": seccion, "confianza": conf, "obs": obs}
+
+    # ---- pasada 0: oraciones con varios datos (intendente, sección electoral, señales, fecha del portal)
+    for i, (txt, enc) in enumerate(toks):
+        if enc or "comparar" in sec_n[i]:
+            continue
+        for rx, fn in PATRONES:
+            if m := rx.search(txt):
+                for campo, valor, obs in fn(m):
+                    registrar(campo, valor, txt[:160], txt[:80], sec_ef[i], obs)
+                consumido.add(i)
+                break
 
     # ---- pasada 1: etiquetas reconocidas
     etiquetas: list[dict] = []
     for i, (txt, enc) in enumerate(toks):
-        if enc:
+        if enc or ignorada(i) or i in consumido:
             continue
         etiqueta, inline = _separar(txt)
         campo = clasificar(etiqueta, sec_n[i])
@@ -345,7 +456,7 @@ def analizar_ficha(html: str) -> dict:
                 continue
             if es_etiqueta(j) and tipo in ("txt", "nombre", "fecha", "poblacion"):
                 break
-            v, mot = validar_valor(campo, toks[j][0])
+            v, mot = validar_valor(campo, toks[j][0], e["etiqueta"])
             if v is not None:
                 return j, v, toks[j][0], motivo
             if es_etiqueta(j):
@@ -388,7 +499,7 @@ def analizar_ficha(html: str) -> dict:
             valor, motivo = validar_valor(campo, e["txt"])  # "Actualizado el 15/10/2026"
             original = e["txt"]
         if valor is None and e["inline"] is not None:
-            valor, motivo = validar_valor(campo, e["inline"])
+            valor, motivo = validar_valor(campo, e["inline"], etiqueta)
             original = e["inline"]
         if valor is None and e["inline"] is None:
             opciones = [e["ad"], e["at"]] if orientacion == "adelante" else [e["at"], e["ad"]]
@@ -399,10 +510,11 @@ def analizar_ficha(html: str) -> dict:
             if valor is None:
                 rechazados += e.get("rech", [])
         if valor is None:
-            if e["inline"] is None and not e.get("rech"):
-                rechazados.append(f"{sec_ef[i]} > {etiqueta}: etiqueta reconocida ({campo}) sin valor")
-            elif e["inline"] is not None:
-                rechazados.append(f"{sec_ef[i]} > {etiqueta} = {e['inline'][:30]}: {motivo}")
+            if sec_n[i] in SECCIONES_CONOCIDAS:  # fuera de las secciones de datos todo es ruido de navegación
+                if e["inline"] is None and not e.get("rech"):
+                    rechazados.append(f"{sec_ef[i]} > {etiqueta}: etiqueta reconocida ({campo}) sin valor")
+                elif e["inline"] is not None:
+                    rechazados.append(f"{sec_ef[i]} > {etiqueta} = {e['inline'][:30]}: {motivo}")
             continue
         if campo == "poblacion_2022":  # exige evidencia del censo 2022
             ctx = " ".join(toks[k][0] for k in range(i, min(n, (usados[0] if usados else i) + 3)))
@@ -410,29 +522,24 @@ def analizar_ficha(html: str) -> dict:
                 rechazados.append(f"{sec_ef[i]} > {etiqueta} = {original[:30]}: población sin año 2022 verificable")
                 continue
         consumido.update(usados + [i])
-        if campo in hallados:
-            if hallados[campo]["valor"] != valor:
-                contradicciones.append({"campo": campo, "a": hallados[campo]["original"], "b": original,
-                                        "seccion_a": hallados[campo]["seccion"], "seccion_b": sec_ef[i]})
-            continue
-        hallados[campo] = {"valor": valor, "original": original.strip(), "etiqueta": etiqueta.strip(),
-                           "seccion": sec_ef[i], "confianza": "MEDIO", "obs": ""}
+        if isinstance(valor, dict):  # un mismo texto aporta varios campos (tasa+víctimas, empleo+tipo+período...)
+            for c2, v2 in valor.items():
+                registrar(c2, v2, original, etiqueta, sec_ef[i], "campo derivado del mismo texto del portal")
+        else:
+            mp = _PILAR.fullmatch(original.strip())
+            registrar(campo, valor, original, etiqueta, sec_ef[i], f"peso informado: {mp.group(1)} % del índice" if mp else "")
 
-    # Semáforo sin etiqueta: color suelto junto al pilar de transparencia.
-    if "transparencia_semaforo" not in hallados:
-        for i, (t, enc) in enumerate(toks):
-            if enc or i in consumido or C.normalizar_texto(t) not in {"verde", "amarillo", "rojo"}:
-                continue
-            if any("transparencia" in C.normalizar_texto(toks[k][0]) for k in range(max(0, i - 3), i)):
-                hallados["transparencia_semaforo"] = {
-                    "valor": _semaforo(t), "original": t, "etiqueta": "(color junto a 'Transparencia')",
-                    "seccion": sec_ef[i], "confianza": "BAJO", "obs": "etiqueta implícita; confirmar"}
-                consumido.add(i)
+    # Condición del cargo, solo si la etiqueta del portal la dice (interino/suplente/reemplazante).
+    if h := hallados.get("intendente_nombre_completo"):
+        ne = C.normalizar_texto(h["etiqueta"])
+        for pal, cond in (("interin", "INTERINO"), ("suplente", "SUPLENTE"), ("reemplaz", "REEMPLAZANTE")):
+            if pal in ne:
+                registrar("intendente_condicion", cond, h["etiqueta"], h["etiqueta"], h["seccion"], "deducida de la etiqueta del portal")
                 break
     # Nombre del intendente por posición en su sección.
     if "intendente_nombre_completo" not in hallados:
         for i, (t, enc) in enumerate(toks):
-            if enc or i in consumido or "intendente" not in C.normalizar_texto(sec_ef[i]) or es_etiqueta(i):
+            if enc or i in consumido or ignorada(i) or "intendente" not in C.normalizar_texto(sec_ef[i]) or es_etiqueta(i):
                 continue
             v, _ = validar_valor("intendente_nombre_completo", t)
             if v:
@@ -444,13 +551,15 @@ def analizar_ficha(html: str) -> dict:
     # Etiquetas no reconocidas: texto seguido de algo que parece un valor.
     no_rec: list[str] = []
     for i, (t, enc) in enumerate(toks[:-1]):
-        if enc or i in consumido or len(t) > 60 or not re.search(r"[A-Za-zñáéíóú]", t):
+        if enc or i in consumido or ignorada(i) or len(t) > 60 or not re.search(r"[A-Za-zñáéíóú]", t):
             continue
         et, inline = _separar(t)
         if clasificar(et, sec_n[i]) or es_ruido(t) or C.normalizar_texto(t) in SECCIONES_CONOCIDAS:
             continue
         sig = inline if inline is not None else toks[i + 1][0]
         if inline is None and toks[i + 1][1]:
+            continue
+        if "://" in t or et.startswith("@") or sig.startswith(("@", "http")):  # metadatos JSON-LD
             continue
         if re.search(r"\d", sig) or _semaforo(sig) or sec_ef[i] == "json":
             item = f"{sec_ef[i] or '(sin sección)'} > {et[:40]} = {sig[:30]}"

@@ -1,0 +1,379 @@
+# Estructura de la ficha: 245 fragmentos; secciones: ['Tres de Febrero', 'Datos clave', 'Cómo se compone su índice', 'Control', 'Intendente', 'Partidos para comparar', 'Fuentes', 'json']; orientación valor/etiqueta: adelante
+
+   0   [] Municipios
+   1   [] Argentinos
+   2   [] Mapa
+   3   [] Ranking
+   4   [] Ratio
+   5   [] Privatización
+   6   [] Petición
+   7   [] Metodología
+   8   [] Inicio
+   9   [] /
+  10   [] Ranking
+  11   [] / Tres de Febrero
+  12 H [Tres de Febrero] Tres de Febrero
+  13   [Tres de Febrero] Índice municipal, transparencia, servicios, seguridad y control de Tres de Febrero, con datos oficiales.
+  14   [Tres de Febrero] 64,3
+  15   [Tres de Febrero] / 100
+  16   [Tres de Febrero] Índice amarillo
+  17   [Tres de Febrero] Tres de Febrero es un partido de la provincia de Buenos Aires (sección electoral 1, grupo Conurbano). Su índice municipal es de
+  18   [Tres de Febrero] 64,3 sobre 100
+  19   [Tres de Febrero] , puesto 19 de 135 en la provincia de Buenos Aires, 25 de 2.280 en el país y 2 de 24 entre sus pares, con índice amarillo. Con ±10 puntos en
+  20   [Tres de Febrero] Abrir la ficha interactiva
+  21 H [Datos clave] Datos clave
+  22   [Datos clave] Índice municipal
+  23   [Datos clave] 64,3 / 100
+  24   [Datos clave] Puesto en la provincia
+  25   [Datos clave] 19 de 135
+  26   [Datos clave] Puesto en el país
+  27   [Datos clave] 25 de 2.280
+  28   [Datos clave] Puesto en su grupo
+  29   [Datos clave] 2 de 24
+  30   [Datos clave] Hogares con cloacas
+  31   [Datos clave] 93,6 %
+  32   [Datos clave] Hogares con agua de red
+  33   [Datos clave] 96,5 %
+  34   [Datos clave] Hogares con gas de red
+  35   [Datos clave] 80,9 %
+  36   [Datos clave] Seguridad, puntaje entre pares (más alto es mejor)
+  37   [Datos clave] 47,4 / 100
+  38   [Datos clave] Homicidios dolosos, promedio 2023-2025 (SNIC)
+  39   [Datos clave] 5,0 cada 100.000 hab. (17 víctimas en 2025)
+  40   [Datos clave] Empleados municipales (informativo, no puntúa)
+  41   [Datos clave] 3.720 (2023; cargos presupuestados, puestos fijados en el presupuesto, no personas); planta permanente 2.020, planta temporaria 1.700; 10,2 
+  42   [Datos clave] Población (Censo 2022)
+  43   [Datos clave] 364.176
+  44   [Datos clave] Gasto por habitante (contexto)
+  45   [Datos clave] $ 415.448
+  46 H [Cómo se compone su índice] Cómo se compone su índice
+  47   [Cómo se compone su índice] Transparencia
+  48   [Cómo se compone su índice] (50 % del índice): 60,0 de 100.
+  49   [Cómo se compone su índice] Servicios y seguridad
+  50   [Cómo se compone su índice] (35 % del índice): 65,1 de 100.
+  51   [Cómo se compone su índice] Control externo y judicial
+  52   [Cómo se compone su índice] (15 % del índice): 76,8 de 100.
+  53   [Cómo se compone su índice] Los puntajes se calculan entre pares, con las mismas reglas para los 2.280 gobiernos locales del país.
+  54   [Cómo se compone su índice] Ver la metodología
+  55   [Cómo se compone su índice] .
+  56 H [Control] Control
+  57   [Control] Último fallo del Tribunal de Cuentas sobre la rendición (2024): aprobada con observaciones.
+  58   [Control] 3 señales de control registradas (Tribunal de Cuentas y causas judiciales verificadas).
+  59 H [Intendente] Intendente
+  60   [Intendente] Intendente interino:
+  61   [Intendente] Rodrigo Aybar
+  62   [Intendente] , en funciones desde el 2025-12-09 (La Libertad Avanza).
+  63 H [Partidos para comparar] Partidos para comparar
+  64   [Partidos para comparar] Coronel Suárez
+  65   [Partidos para comparar] : 65,2/100, puesto 18
+  66   [Partidos para comparar] Lobos
+  67   [Partidos para comparar] : 64,2/100, puesto 20
+  68   [Partidos para comparar] Vicente López
+  69   [Partidos para comparar] : 80,2/100, puesto 3
+  70   [Partidos para comparar] San Isidro
+  71   [Partidos para comparar] : 62,0/100, puesto 24
+  72   [Partidos para comparar] Avellaneda
+  73   [Partidos para comparar] : 56,2/100, puesto 44
+  74   [Partidos para comparar] Tigre
+  75   [Partidos para comparar] : 54,4/100, puesto 47
+  76   [Partidos para comparar] Lanús
+  77   [Partidos para comparar] : 50,7/100, puesto 61
+  78   [Partidos para comparar] General San Martín
+  79   [Partidos para comparar] : 50,1/100, puesto 64
+  80   [Partidos para comparar] Quilmes
+  81   [Partidos para comparar] : 49,5/100, puesto 67
+  82   [Partidos para comparar] San Miguel
+  83   [Partidos para comparar] : 48,6/100, puesto 72
+  84 H [Fuentes] Fuentes
+  85   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  86   [Fuentes] Cuadro 1.2. Provincia de Buenos Aires. Total de población, variación absoluta y variación relativa, por partido. Años 2010 y 2022
+  87   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  88   [Fuentes] Cuadro 2.2. Provincia de Buenos Aires. Total de hogares, por provisión del agua, según procedencia del agua, por partido. Año 2022
+  89   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  90   [Fuentes] Cuadro 3.2. Provincia de Buenos Aires. Total de hogares, por ubicación del baño o letrina, según desagüe y descarga de agua del inodoro, y p
+  91   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  92   [Fuentes] Cuadro 4.2. Provincia de Buenos Aires. Total de hogares, por combustible utilizado principalmente para cocinar, según partido. Año 2022
+  93   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  94   [Fuentes] Cuadro 2.2. Provincia de Buenos Aires. Total de viviendas particulares ocupadas y hogares, por cantidad de hogares, según partido. Año 2022
+  95   [Fuentes] Asociación Argentina de Presupuesto y Administración Financiera Pública (ASAP) – Filial Provincia de Buenos Aires:
+  96   [Fuentes] Transparencia Fiscal Municipal – Provincia de Buenos Aires, Informe N.º 28 (mayo de 2026)
+  97   [Fuentes] Municipalidad de Tres de Febrero - Cumplimiento Ley de Responsabilidad Fiscal:
+  98   [Fuentes] Situación económica financiera (Cuarto trimestre y cierre de ejercicio 2025)
+  99   [Fuentes] Dirección Provincial de Estadística (DPE), Ministerio de Economía de la Provincia de Buenos Aires:
+ 100   [Fuentes] Tablero «tablero proyecciones» (Estudios Sociodemográficos PBA): población estimada al 1° de julio de cada año calendario, por sexo, según p
+ 101   [Fuentes] Honorable Tribunal de Cuentas de la Provincia de Buenos Aires:
+ 102   [Fuentes] Buscador de fallos (sistema Summun): fallos del H. Tribunal de Cuentas sobre rendiciones de cuentas
+ 103   [Fuentes] Honorable Tribunal de Cuentas de la Provincia de Buenos Aires - fallo de rendición de cuentas:
+ 104   [Fuentes] Fallo H.T.C. expediente 4-121.0-2023, ejercicio 2023 (acuerdo del 05/12/2024)
+ 105   [Fuentes] Inicio
+ 106   [Fuentes] Ranking
+ 107   [Fuentes] Ratio municipal
+ 108   [Fuentes] Metodología
+ 109   [Fuentes] Aviso legal
+ 110   [Fuentes] Preferencias de cookies
+ 111   [Fuentes] Datos actualizados al 2026-10-15. Fuentes oficiales citadas en cada dato.
+ 112 H [json] json
+ 113   [json] @context
+ 114   [json] https://schema.org
+ 115   [json] @type
+ 116   [json] Organization
+ 117   [json] @id
+ 118   [json] https://municipiosargentinos.net/#org
+ 119   [json] name
+ 120   [json] Municipios Argentinos
+ 121   [json] url
+ 122   [json] https://municipiosargentinos.net/
+ 123   [json] @type
+ 124   [json] ImageObject
+ 125   [json] url
+ 126   [json] https://municipiosargentinos.net/favicon.svg
+ 127   [json] @id
+ 128   [json] https://municipiosargentinos.net/#web
+ 129   [json] @type
+ 130   [json] WebSite
+ 131   [json] name
+ 132   [json] Municipios Argentinos
+ 133   [json] url
+ 134   [json] https://municipiosargentinos.net/
+ 135   [json] @type
+ 136   [json] WebPage
+ 137   [json] @id
+ 138   [json] https://municipiosargentinos.net/m/tres-de-febrero/
+ 139   [json] url
+ 140   [json] https://municipiosargentinos.net/m/tres-de-febrero/
+ 141   [json] name
+ 142   [json] Tres de Febrero: índice 64,3/100, puesto 19 de 135 en Buenos Aires · 25 de 2.280 en el país | Municipios Argentinos
+ 143   [json] description
+ 144   [json] Tres de Febrero: Índice municipal 64,3/100 (puesto 19 de 135 en Buenos Aires · 25 de 2.280 en el país; índice amarillo); cloacas 94 %, agua 
+ 145   [json] in Language
+ 146   [json] es-AR
+ 147   [json] @id
+ 148   [json] https://municipiosargentinos.net/#web
+ 149   [json] @id
+ 150   [json] https://municipiosargentinos.net/m/tres-de-febrero/#partido
+ 151   [json] @type
+ 152   [json] ImageObject
+ 153   [json] url
+ 154   [json] https://municipiosargentinos.net/img/og/tres-de-febrero.jpg?v=71ea8857c5
+ 155   [json] width
+ 156   [json] 1200
+ 157   [json] height
+ 158   [json] 630
+ 159   [json] date Modified
+ 160   [json] 2026-10-15
+ 161   [json] @id
+ 162   [json] https://municipiosargentinos.net/m/tres-de-febrero/#bc
+ 163   [json] @type
+ 164   [json] BreadcrumbList
+ 165   [json] @type
+ 166   [json] ListItem
+ 167   [json] position
+ 168   [json] 1
+ 169   [json] name
+ 170   [json] Inicio
+ 171   [json] item
+ 172   [json] https://municipiosargentinos.net/
+ 173   [json] @type
+ 174   [json] ListItem
+ 175   [json] position
+ 176   [json] 2
+ 177   [json] name
+ 178   [json] Ranking
+ 179   [json] item
+ 180   [json] https://municipiosargentinos.net/ranking/
+ 181   [json] @type
+ 182   [json] ListItem
+ 183   [json] position
+ 184   [json] 3
+ 185   [json] name
+ 186   [json] Tres de Febrero
+ 187   [json] item
+ 188   [json] https://municipiosargentinos.net/m/tres-de-febrero/
+ 189   [json] @id
+ 190   [json] https://municipiosargentinos.net/m/tres-de-febrero/#bc
+ 191   [json] @type
+ 192   [json] AdministrativeArea
+ 193   [json] @type
+ 194   [json] Place
+ 195   [json] @id
+ 196   [json] https://municipiosargentinos.net/m/tres-de-febrero/#partido
+ 197   [json] name
+ 198   [json] Tres de Febrero
+ 199   [json] alternate Name
+ 200   [json] Partido de Tres de Febrero
+ 201   [json] @type
+ 202   [json] AdministrativeArea
+ 203   [json] name
+ 204   [json] Provincia de Buenos Aires
+ 205   [json] @type
+ 206   [json] Country
+ 207   [json] name
+ 208   [json] Argentina
+ 209   [json] @type
+ 210   [json] PropertyValue
+ 211   [json] property ID
+ 212   [json] INDEC código de partido
+ 213   [json] value
+ 214   [json] 06840
+ 215   [json] url
+ 216   [json] https://municipiosargentinos.net/m/tres-de-febrero/
+ 217   [json] image
+ 218   [json] https://municipiosargentinos.net/img/m/tres-de-febrero.webp?v=e7344ab2fd
+ 219   [json] @type
+ 220   [json] PropertyValue
+ 221   [json] name
+ 222   [json] Población (Censo 2022)
+ 223   [json] value
+ 224   [json] 364176
+ 225   [json] @type
+ 226   [json] GovernmentOrganization
+ 227   [json] @id
+ 228   [json] https://municipiosargentinos.net/m/tres-de-febrero/#municipalidad
+ 229   [json] name
+ 230   [json] Municipalidad de Tres de Febrero
+ 231   [json] @id
+ 232   [json] https://municipiosargentinos.net/m/tres-de-febrero/#partido
+ 233   [json] @type
+ 234   [json] Person
+ 235   [json] name
+ 236   [json] Rodrigo Aybar
+ 237   [json] job Title
+ 238   [json] Intendente interino
+ 239   [json] @type
+ 240   [json] Person
+ 241   [json] name
+ 242   [json] Rodrigo Aybar
+ 243   [json] job Title
+ 244   [json] Intendente interino
+
+# Reconocidos
+indice_global = 64.3  <- 'Índice municipal' en 'Datos clave' (MEDIO)
+ranking_provincial = 19  <- 'Puesto en la provincia' en 'Datos clave' (MEDIO)
+ranking_pares = 2  <- 'Puesto en su grupo' en 'Datos clave' (MEDIO)
+cobertura_agua_pct = 96.5  <- 'Hogares con agua de red' en 'Datos clave' (MEDIO)
+cobertura_gas_pct = 80.9  <- 'Hogares con gas de red' en 'Datos clave' (MEDIO)
+poblacion_2022 = 364176  <- 'Población (Censo 2022)' en 'Datos clave' (MEDIO)
+intendente_nombre_completo = 'Rodrigo Aybar'  <- '(primer nombre en la sección Intendente)' en 'Intendente' (BAJO)
+
+# Rechazados
+ > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+ > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+Datos clave > Seguridad, puntaje entre pares (más alto es mejor) = 47,4 / 100: formato de ranking no reconocido
+Datos clave > Seguridad, puntaje entre pares (más alto es mejor) = Homicidios dolosos, promedio 2: formato de ranking no reconocido
+Datos clave > 5,0 cada 100.000 hab. (17 víctimas en 2025) = 3.720 (2023; cargos presupuest: vacío o demasiado largo
+Cómo se compone su índice > Transparencia = (50 % del índice): 60,0 de 100: formato no numérico
+Cómo se compone su índice > Servicios y seguridad = (35 % del índice): 65,1 de 100: formato no numérico
+Cómo se compone su índice > Control externo y judicial = (15 % del índice): 76,8 de 100: formato no numérico
+Cómo se compone su índice > Control externo y judicial = Los puntajes se calculan entre: formato no numérico
+Fuentes > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+json > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+
+# Etiquetas no reconocidas
+Tres de Febrero > Índice amarillo = Tres de Febrero es un partido 
+Tres de Febrero > 64,3 sobre 100 = , puesto 19 de 135 en la provi
+Datos clave > Puesto en el país = 25 de 2.280
+Datos clave > Hogares con cloacas = 93,6 %
+Datos clave > Homicidios dolosos, promedio 2023-2025 ( = 5,0 cada 100.000 hab. (17 víct
+Datos clave > Empleados municipales (informativo, no p = 3.720 (2023; cargos presupuest
+Datos clave > Gasto por habitante (contexto) = $ 415.448
+Cómo se compone su índice > (50 % del índice) = 60,0 de 100.
+Cómo se compone su índice > (35 % del índice) = 65,1 de 100.
+Cómo se compone su índice > (15 % del índice) = 76,8 de 100.
+Partidos para comparar > Coronel Suárez = : 65,2/100, puesto 18
+Partidos para comparar >  = 65,2/100, puesto 18
+Partidos para comparar > Lobos = : 64,2/100, puesto 20
+Partidos para comparar >  = 64,2/100, puesto 20
+Partidos para comparar > Vicente López = : 80,2/100, puesto 3
+Partidos para comparar >  = 80,2/100, puesto 3
+Partidos para comparar > San Isidro = : 62,0/100, puesto 24
+Partidos para comparar >  = 62,0/100, puesto 24
+Partidos para comparar > Avellaneda = : 56,2/100, puesto 44
+Partidos para comparar >  = 56,2/100, puesto 44
+Partidos para comparar > Tigre = : 54,4/100, puesto 47
+Partidos para comparar >  = 54,4/100, puesto 47
+Partidos para comparar > Lanús = : 50,7/100, puesto 61
+Partidos para comparar >  = 50,7/100, puesto 61
+Partidos para comparar > General San Martín = : 50,1/100, puesto 64
+Partidos para comparar >  = 50,1/100, puesto 64
+Partidos para comparar > Quilmes = : 49,5/100, puesto 67
+Partidos para comparar >  = 49,5/100, puesto 67
+Partidos para comparar > San Miguel = : 48,6/100, puesto 72
+Partidos para comparar >  = 48,6/100, puesto 72
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 1.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 2.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 3.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 4.2. Provincia de Bueno
+Fuentes > Preferencias de cookies = Datos actualizados al 2026-10-
+json > @context = https://schema.org
+json > https = //schema.org
+json > @type = Organization
+json > Organization = @id
+json > @id = https://municipiosargentinos.n
+json > https = //municipiosargentinos.net/#or
+json > name = Municipios Argentinos
+json > Municipios Argentinos = url
+json > url = https://municipiosargentinos.n
+json > https = //municipiosargentinos.net/
+json > @type = ImageObject
+json > ImageObject = url
+json > https = //municipiosargentinos.net/fav
+json > https = //municipiosargentinos.net/#we
+json > @type = WebSite
+json > WebSite = name
+json > @type = WebPage
+json > WebPage = @id
+json > https = //municipiosargentinos.net/m/t
+json > name = Tres de Febrero: índice 64,3/1
+json > description = Tres de Febrero: Índice munici
+json > in Language = es-AR
+json > es-AR = @id
+json > width = 1200
+json > height = 630
+json > date Modified = 2026-10-15
+json > @type = BreadcrumbList
+json > BreadcrumbList = @type
+json > @type = ListItem
+json > ListItem = position
+json > position = 1
+json > name = Inicio
+json > Inicio = item
+json > item = https://municipiosargentinos.n
+json > position = 2
+json > name = Ranking
+json > https = //municipiosargentinos.net/ran
+json > position = 3
+json > name = Tres de Febrero
+json > Tres de Febrero = item
+json > @type = AdministrativeArea
+json > AdministrativeArea = @type
+json > @type = Place
+json > Place = @id
+json > Tres de Febrero = alternate Name
+json > alternate Name = Partido de Tres de Febrero
+json > Partido de Tres de Febrero = @type
+json > AdministrativeArea = name
+json > name = Provincia de Buenos Aires
+json > Provincia de Buenos Aires = @type
+json > @type = Country
+json > Country = name
+json > name = Argentina
+json > Argentina = @type
+json > @type = PropertyValue
+json > PropertyValue = property ID
+json > property ID = INDEC código de partido
+json > INDEC código de partido = value
+json > value = 06840
+json > image = https://municipiosargentinos.n
+json > PropertyValue = name
+json > name = Población (Censo 2022)
+json > value = 364176
+json > @type = GovernmentOrganization
+json > GovernmentOrganization = @id
+json > name = Municipalidad de Tres de Febre
+json > Municipalidad de Tres de Febrero = @id
+json > @type = Person
+json > Person = name
+json > name = Rodrigo Aybar
+json > Rodrigo Aybar = job Title
+json > job Title = Intendente interino
+json > Intendente interino = @type

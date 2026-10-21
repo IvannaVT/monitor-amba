@@ -22,6 +22,14 @@
 5. Intendente/partido/frente/asunción/población/sección van a 01 con trazabilidad en 05 (nivel `MEDIO`; `BAJO` si el nombre se infiere por posición). Son datos del portal y quedan **pendientes de verificación oficial**; nombre y apellido no se separan y la coalición no se completa.
 6. `DATOS_NO_ENCONTRADOS` lista faltantes, secciones vistas, etiquetas no reconocidas (`sección > etiqueta = valor`) y valores rechazados. Con `--diagnostico DIR` se guardan el HTML público y un volcado de estructura (artefacto `monitor-amba-datos`, carpeta `diagnostico/`; no se commitea).
 
+### Estructura real de la ficha (capturada el 2026-10-15; fixtures en `tests/fixtures/real/`)
+- *Datos clave*: pares etiqueta/valor consecutivos (`Índice municipal` → `56,2 / 100`; `Puesto en la provincia` → `44 de 135`; `Hogares con cloacas` → `80,3 %`; `Seguridad, puntaje entre pares` → `47,1 / 100`; `Población (Censo 2022)` → `367.554`).
+- Valores compuestos en un solo texto: `4,4 cada 100.000 hab. (17 víctimas en 2025)` (el período sale de la etiqueta: `promedio 2023-2025`) y `4.125 (2026-08; empleados ocupados, ...)` / `3.720 (2023; cargos presupuestados, ...)`. Los **cargos presupuestados no son empleados**: se registran solo en `05` (`cargos_presupuestados`) y `tipo_dato_empleo` = `CARGOS_PRESUPUESTADOS`; `empleados_municipales` se completa únicamente con `EMPLEADOS_OCUPADOS`. "No declara cuántos empleados tiene" no genera dato.
+- *Cómo se compone su índice*: `Transparencia` → `(50 % del índice): 50,0 de 100.`; el peso (50/35/15 %) se guarda como observación y nunca como puntaje. `Semáforo de transparencia: amarillo.` aparece solo en algunas fichas; **no se infiere** del color del índice (`Índice verde/amarillo`).
+- *Control*: `Último fallo del Tribunal de Cuentas sobre la rendición (2024): aprobada con observaciones.` y `N señales de control registradas ...`.
+- *Intendente*: etiqueta (`Intendenta:` / `Intendente interino:`), nombre y `, en funciones desde el AAAA-MM-DD (PARTIDO · frente X).`. La condición solo se registra si la etiqueta dice interino/suplente/reemplazante; el primer elemento entre paréntesis va a `partido_politico` (el portal no distingue partido y frente) y todo queda pendiente de verificación oficial.
+- *Partidos para comparar* y *Fuentes* contienen datos de otros municipios o citas: se ignoran. La sección electoral y el grupo salen de la oración `(sección electoral 3, grupo Conurbano)`.
+
 ## Trazabilidad y confianza
 Cada valor de 04 tiene fila en 05 (fuente, URL, fecha de consulta, método, SHA-256 parcial del HTML). Portal agregador => `MEDIO`.
 La página de metodología se verifica textualmente (50/35/15 % y tope de 40 puntos) y se guarda su huella; un cambio de huella genera la alerta `CAMBIO_METODOLOGICO`.

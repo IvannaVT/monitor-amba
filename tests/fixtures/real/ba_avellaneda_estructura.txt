@@ -1,0 +1,387 @@
+# Estructura de la ficha: 248 fragmentos; secciones: ['Avellaneda', 'Datos clave', 'Cómo se compone su índice', 'Control', 'Intendente', 'Partidos para comparar', 'Fuentes', 'json']; orientación valor/etiqueta: adelante
+
+   0   [] Municipios
+   1   [] Argentinos
+   2   [] Mapa
+   3   [] Ranking
+   4   [] Ratio
+   5   [] Privatización
+   6   [] Petición
+   7   [] Metodología
+   8   [] Inicio
+   9   [] /
+  10   [] Ranking
+  11   [] / Avellaneda
+  12 H [Avellaneda] Avellaneda
+  13   [Avellaneda] Índice municipal, transparencia, servicios, seguridad y control de Avellaneda, con datos oficiales.
+  14   [Avellaneda] 56,2
+  15   [Avellaneda] / 100
+  16   [Avellaneda] Índice amarillo
+  17   [Avellaneda] Avellaneda es un partido de la provincia de Buenos Aires (sección electoral 3, grupo Conurbano). Su índice municipal es de
+  18   [Avellaneda] 56,2 sobre 100
+  19   [Avellaneda] , puesto 44 de 135 en la provincia de Buenos Aires, 65 de 2.280 en el país y 4 de 24 entre sus pares, con índice amarillo. Con ±10 puntos en
+  20   [Avellaneda] Abrir la ficha interactiva
+  21 H [Datos clave] Datos clave
+  22   [Datos clave] Índice municipal
+  23   [Datos clave] 56,2 / 100
+  24   [Datos clave] Puesto en la provincia
+  25   [Datos clave] 44 de 135
+  26   [Datos clave] Puesto en el país
+  27   [Datos clave] 65 de 2.280
+  28   [Datos clave] Puesto en su grupo
+  29   [Datos clave] 4 de 24
+  30   [Datos clave] Transparencia (relevamiento propio)
+  31   [Datos clave] 50,0 / 100
+  32   [Datos clave] Hogares con cloacas
+  33   [Datos clave] 80,3 %
+  34   [Datos clave] Hogares con agua de red
+  35   [Datos clave] 96,4 %
+  36   [Datos clave] Hogares con gas de red
+  37   [Datos clave] 71,7 %
+  38   [Datos clave] Seguridad, puntaje entre pares (más alto es mejor)
+  39   [Datos clave] 47,1 / 100
+  40   [Datos clave] Homicidios dolosos, promedio 2023-2025 (SNIC)
+  41   [Datos clave] 4,4 cada 100.000 hab. (17 víctimas en 2025)
+  42   [Datos clave] Empleados municipales (informativo, no puntúa)
+  43   [Datos clave] No declara cuántos empleados tiene
+  44   [Datos clave] Población (Censo 2022)
+  45   [Datos clave] 367.554
+  46   [Datos clave] Gasto por habitante (contexto)
+  47   [Datos clave] $ 384.190
+  48 H [Cómo se compone su índice] Cómo se compone su índice
+  49   [Cómo se compone su índice] Transparencia
+  50   [Cómo se compone su índice] (50 % del índice): 50,0 de 100.
+  51   [Cómo se compone su índice] Servicios y seguridad
+  52   [Cómo se compone su índice] (35 % del índice): 60,9 de 100.
+  53   [Cómo se compone su índice] Control externo y judicial
+  54   [Cómo se compone su índice] (15 % del índice): 65,8 de 100.
+  55   [Cómo se compone su índice] Los puntajes se calculan entre pares, con las mismas reglas para los 2.280 gobiernos locales del país.
+  56   [Cómo se compone su índice] Ver la metodología
+  57   [Cómo se compone su índice] .
+  58   [Cómo se compone su índice] Semáforo de transparencia: amarillo.
+  59 H [Control] Control
+  60   [Control] Último fallo del Tribunal de Cuentas sobre la rendición (2024): aprobada con observaciones.
+  61   [Control] 5 señales de control registradas (Tribunal de Cuentas y causas judiciales verificadas).
+  62 H [Intendente] Intendente
+  63   [Intendente] Intendenta:
+  64   [Intendente] Magdalena Sierra
+  65   [Intendente] , en funciones desde el 2026-07-03 (PJ · frente Fuerza Patria).
+  66 H [Partidos para comparar] Partidos para comparar
+  67   [Partidos para comparar] Pergamino
+  68   [Partidos para comparar] : 56,2/100, puesto 43
+  69   [Partidos para comparar] Florentino Ameghino
+  70   [Partidos para comparar] : 55,8/100, puesto 45
+  71   [Partidos para comparar] Vicente López
+  72   [Partidos para comparar] : 80,2/100, puesto 3
+  73   [Partidos para comparar] Tres de Febrero
+  74   [Partidos para comparar] : 64,3/100, puesto 19
+  75   [Partidos para comparar] San Isidro
+  76   [Partidos para comparar] : 62,0/100, puesto 24
+  77   [Partidos para comparar] Tigre
+  78   [Partidos para comparar] : 54,4/100, puesto 47
+  79   [Partidos para comparar] Lanús
+  80   [Partidos para comparar] : 50,7/100, puesto 61
+  81   [Partidos para comparar] General San Martín
+  82   [Partidos para comparar] : 50,1/100, puesto 64
+  83   [Partidos para comparar] Quilmes
+  84   [Partidos para comparar] : 49,5/100, puesto 67
+  85   [Partidos para comparar] San Miguel
+  86   [Partidos para comparar] : 48,6/100, puesto 72
+  87 H [Fuentes] Fuentes
+  88   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  89   [Fuentes] Cuadro 1.2. Provincia de Buenos Aires. Total de población, variación absoluta y variación relativa, por partido. Años 2010 y 2022
+  90   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  91   [Fuentes] Cuadro 2.2. Provincia de Buenos Aires. Total de hogares, por provisión del agua, según procedencia del agua, por partido. Año 2022
+  92   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  93   [Fuentes] Cuadro 3.2. Provincia de Buenos Aires. Total de hogares, por ubicación del baño o letrina, según desagüe y descarga de agua del inodoro, y p
+  94   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  95   [Fuentes] Cuadro 4.2. Provincia de Buenos Aires. Total de hogares, por combustible utilizado principalmente para cocinar, según partido. Año 2022
+  96   [Fuentes] INDEC (Instituto Nacional de Estadística y Censos):
+  97   [Fuentes] Cuadro 2.2. Provincia de Buenos Aires. Total de viviendas particulares ocupadas y hogares, por cantidad de hogares, según partido. Año 2022
+  98   [Fuentes] Relevamiento propio (manual) de sitios web oficiales municipales:
+  99   [Fuentes] Verificación manual de transparencia activa (8 criterios) con URL exacta
+ 100   [Fuentes] Asociación Argentina de Presupuesto y Administración Financiera Pública (ASAP) – Filial Provincia de Buenos Aires:
+ 101   [Fuentes] Transparencia Fiscal Municipal – Provincia de Buenos Aires, Informe N.º 28 (mayo de 2026)
+ 102   [Fuentes] Municipalidad de Avellaneda - Secretaría de Hacienda y Administración:
+ 103   [Fuentes] (sin título en la página actual; archivo balance-anual-2023.pdf)
+ 104   [Fuentes] Dirección Provincial de Estadística (DPE), Ministerio de Economía de la Provincia de Buenos Aires:
+ 105   [Fuentes] Tablero «tablero proyecciones» (Estudios Sociodemográficos PBA): población estimada al 1° de julio de cada año calendario, por sexo, según p
+ 106   [Fuentes] Honorable Tribunal de Cuentas de la Provincia de Buenos Aires:
+ 107   [Fuentes] Buscador de fallos (sistema Summun): fallos del H. Tribunal de Cuentas sobre rendiciones de cuentas
+ 108   [Fuentes] Inicio
+ 109   [Fuentes] Ranking
+ 110   [Fuentes] Ratio municipal
+ 111   [Fuentes] Metodología
+ 112   [Fuentes] Aviso legal
+ 113   [Fuentes] Preferencias de cookies
+ 114   [Fuentes] Datos actualizados al 2026-10-15. Fuentes oficiales citadas en cada dato.
+ 115 H [json] json
+ 116   [json] @context
+ 117   [json] https://schema.org
+ 118   [json] @type
+ 119   [json] Organization
+ 120   [json] @id
+ 121   [json] https://municipiosargentinos.net/#org
+ 122   [json] name
+ 123   [json] Municipios Argentinos
+ 124   [json] url
+ 125   [json] https://municipiosargentinos.net/
+ 126   [json] @type
+ 127   [json] ImageObject
+ 128   [json] url
+ 129   [json] https://municipiosargentinos.net/favicon.svg
+ 130   [json] @id
+ 131   [json] https://municipiosargentinos.net/#web
+ 132   [json] @type
+ 133   [json] WebSite
+ 134   [json] name
+ 135   [json] Municipios Argentinos
+ 136   [json] url
+ 137   [json] https://municipiosargentinos.net/
+ 138   [json] @type
+ 139   [json] WebPage
+ 140   [json] @id
+ 141   [json] https://municipiosargentinos.net/m/avellaneda/
+ 142   [json] url
+ 143   [json] https://municipiosargentinos.net/m/avellaneda/
+ 144   [json] name
+ 145   [json] Avellaneda: índice 56,2/100, puesto 44 de 135 en Buenos Aires · 65 de 2.280 en el país | Municipios Argentinos
+ 146   [json] description
+ 147   [json] Avellaneda: Índice municipal 56,2/100 (puesto 44 de 135 en Buenos Aires · 65 de 2.280 en el país; índice amarillo); transparencia 50,0/100; 
+ 148   [json] in Language
+ 149   [json] es-AR
+ 150   [json] @id
+ 151   [json] https://municipiosargentinos.net/#web
+ 152   [json] @id
+ 153   [json] https://municipiosargentinos.net/m/avellaneda/#partido
+ 154   [json] @type
+ 155   [json] ImageObject
+ 156   [json] url
+ 157   [json] https://municipiosargentinos.net/img/og/avellaneda.jpg?v=f4e33dfc3f
+ 158   [json] width
+ 159   [json] 1200
+ 160   [json] height
+ 161   [json] 630
+ 162   [json] date Modified
+ 163   [json] 2026-10-15
+ 164   [json] @id
+ 165   [json] https://municipiosargentinos.net/m/avellaneda/#bc
+ 166   [json] @type
+ 167   [json] BreadcrumbList
+ 168   [json] @type
+ 169   [json] ListItem
+ 170   [json] position
+ 171   [json] 1
+ 172   [json] name
+ 173   [json] Inicio
+ 174   [json] item
+ 175   [json] https://municipiosargentinos.net/
+ 176   [json] @type
+ 177   [json] ListItem
+ 178   [json] position
+ 179   [json] 2
+ 180   [json] name
+ 181   [json] Ranking
+ 182   [json] item
+ 183   [json] https://municipiosargentinos.net/ranking/
+ 184   [json] @type
+ 185   [json] ListItem
+ 186   [json] position
+ 187   [json] 3
+ 188   [json] name
+ 189   [json] Avellaneda
+ 190   [json] item
+ 191   [json] https://municipiosargentinos.net/m/avellaneda/
+ 192   [json] @id
+ 193   [json] https://municipiosargentinos.net/m/avellaneda/#bc
+ 194   [json] @type
+ 195   [json] AdministrativeArea
+ 196   [json] @type
+ 197   [json] Place
+ 198   [json] @id
+ 199   [json] https://municipiosargentinos.net/m/avellaneda/#partido
+ 200   [json] name
+ 201   [json] Avellaneda
+ 202   [json] alternate Name
+ 203   [json] Partido de Avellaneda
+ 204   [json] @type
+ 205   [json] AdministrativeArea
+ 206   [json] name
+ 207   [json] Provincia de Buenos Aires
+ 208   [json] @type
+ 209   [json] Country
+ 210   [json] name
+ 211   [json] Argentina
+ 212   [json] @type
+ 213   [json] PropertyValue
+ 214   [json] property ID
+ 215   [json] INDEC código de partido
+ 216   [json] value
+ 217   [json] 06035
+ 218   [json] url
+ 219   [json] https://municipiosargentinos.net/m/avellaneda/
+ 220   [json] image
+ 221   [json] https://municipiosargentinos.net/img/m/avellaneda.webp?v=e112a828c9
+ 222   [json] @type
+ 223   [json] PropertyValue
+ 224   [json] name
+ 225   [json] Población (Censo 2022)
+ 226   [json] value
+ 227   [json] 367554
+ 228   [json] @type
+ 229   [json] GovernmentOrganization
+ 230   [json] @id
+ 231   [json] https://municipiosargentinos.net/m/avellaneda/#municipalidad
+ 232   [json] name
+ 233   [json] Municipalidad de Avellaneda
+ 234   [json] @id
+ 235   [json] https://municipiosargentinos.net/m/avellaneda/#partido
+ 236   [json] @type
+ 237   [json] Person
+ 238   [json] name
+ 239   [json] Magdalena Sierra
+ 240   [json] job Title
+ 241   [json] Intendenta
+ 242   [json] @type
+ 243   [json] Person
+ 244   [json] name
+ 245   [json] Magdalena Sierra
+ 246   [json] job Title
+ 247   [json] Intendenta
+
+# Reconocidos
+indice_global = 56.2  <- 'Índice municipal' en 'Datos clave' (MEDIO)
+ranking_provincial = 44  <- 'Puesto en la provincia' en 'Datos clave' (MEDIO)
+ranking_pares = 4  <- 'Puesto en su grupo' en 'Datos clave' (MEDIO)
+transparencia_relevamiento_propio = 50.0  <- 'Transparencia (relevamiento propio)' en 'Datos clave' (MEDIO)
+cobertura_agua_pct = 96.4  <- 'Hogares con agua de red' en 'Datos clave' (MEDIO)
+cobertura_gas_pct = 71.7  <- 'Hogares con gas de red' en 'Datos clave' (MEDIO)
+poblacion_2022 = 367554  <- 'Población (Censo 2022)' en 'Datos clave' (MEDIO)
+transparencia_semaforo = 'AMARILLO'  <- 'Semáforo de transparencia' en 'Cómo se compone su índice' (MEDIO)
+intendente_nombre_completo = 'Magdalena Sierra'  <- 'Intendenta' en 'Intendente' (MEDIO)
+
+# Rechazados
+ > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+ > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+Datos clave > Seguridad, puntaje entre pares (más alto es mejor) = 47,1 / 100: formato de ranking no reconocido
+Datos clave > Seguridad, puntaje entre pares (más alto es mejor) = Homicidios dolosos, promedio 2: formato de ranking no reconocido
+Datos clave > 4,4 cada 100.000 hab. (17 víctimas en 2025): etiqueta reconocida (victimas_homicidio_ultimo_anio) sin valor
+Cómo se compone su índice > Transparencia = (50 % del índice): 50,0 de 100: formato no numérico
+Cómo se compone su índice > Servicios y seguridad = (35 % del índice): 60,9 de 100: formato no numérico
+Cómo se compone su índice > Control externo y judicial = (15 % del índice): 65,8 de 100: formato no numérico
+Cómo se compone su índice > Control externo y judicial = Los puntajes se calculan entre: formato no numérico
+Fuentes > Relevamiento propio (manual) de sitios web oficiales municipales: etiqueta reconocida (transparencia_relevamiento_propio) sin valor
+Fuentes > Verificación manual de transparencia activa (8 criterios) con URL exacta = Transparencia Fiscal Municipal: formato no numérico
+Fuentes > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+json > Ranking: etiqueta reconocida (ranking_provincial) sin valor
+json > Intendenta: etiqueta reconocida (intendente_nombre_completo) sin valor
+json > Intendenta: etiqueta reconocida (intendente_nombre_completo) sin valor
+
+# Etiquetas no reconocidas
+Avellaneda > Índice amarillo = Avellaneda es un partido de la
+Avellaneda > 56,2 sobre 100 = , puesto 44 de 135 en la provi
+Datos clave > Puesto en el país = 65 de 2.280
+Datos clave > Hogares con cloacas = 80,3 %
+Datos clave > Homicidios dolosos, promedio 2023-2025 ( = 4,4 cada 100.000 hab. (17 víct
+Datos clave > No declara cuántos empleados tiene = Población (Censo 2022)
+Datos clave > Gasto por habitante (contexto) = $ 384.190
+Cómo se compone su índice > (50 % del índice) = 50,0 de 100.
+Cómo se compone su índice > (35 % del índice) = 60,9 de 100.
+Cómo se compone su índice > (15 % del índice) = 65,8 de 100.
+Partidos para comparar > Pergamino = : 56,2/100, puesto 43
+Partidos para comparar >  = 56,2/100, puesto 43
+Partidos para comparar > Florentino Ameghino = : 55,8/100, puesto 45
+Partidos para comparar >  = 55,8/100, puesto 45
+Partidos para comparar > Vicente López = : 80,2/100, puesto 3
+Partidos para comparar >  = 80,2/100, puesto 3
+Partidos para comparar > Tres de Febrero = : 64,3/100, puesto 19
+Partidos para comparar >  = 64,3/100, puesto 19
+Partidos para comparar > San Isidro = : 62,0/100, puesto 24
+Partidos para comparar >  = 62,0/100, puesto 24
+Partidos para comparar > Tigre = : 54,4/100, puesto 47
+Partidos para comparar >  = 54,4/100, puesto 47
+Partidos para comparar > Lanús = : 50,7/100, puesto 61
+Partidos para comparar >  = 50,7/100, puesto 61
+Partidos para comparar > General San Martín = : 50,1/100, puesto 64
+Partidos para comparar >  = 50,1/100, puesto 64
+Partidos para comparar > Quilmes = : 49,5/100, puesto 67
+Partidos para comparar >  = 49,5/100, puesto 67
+Partidos para comparar > San Miguel = : 48,6/100, puesto 72
+Partidos para comparar >  = 48,6/100, puesto 72
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 1.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 2.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 3.2. Provincia de Bueno
+Fuentes > INDEC (Instituto Nacional de Estadística = Cuadro 4.2. Provincia de Bueno
+Fuentes > Preferencias de cookies = Datos actualizados al 2026-10-
+json > @context = https://schema.org
+json > https = //schema.org
+json > @type = Organization
+json > Organization = @id
+json > @id = https://municipiosargentinos.n
+json > https = //municipiosargentinos.net/#or
+json > name = Municipios Argentinos
+json > Municipios Argentinos = url
+json > url = https://municipiosargentinos.n
+json > https = //municipiosargentinos.net/
+json > @type = ImageObject
+json > ImageObject = url
+json > https = //municipiosargentinos.net/fav
+json > https = //municipiosargentinos.net/#we
+json > @type = WebSite
+json > WebSite = name
+json > @type = WebPage
+json > WebPage = @id
+json > https = //municipiosargentinos.net/m/a
+json > name = Avellaneda: índice 56,2/100, p
+json > description = Avellaneda: Índice municipal 5
+json > in Language = es-AR
+json > es-AR = @id
+json > width = 1200
+json > height = 630
+json > date Modified = 2026-10-15
+json > @type = BreadcrumbList
+json > BreadcrumbList = @type
+json > @type = ListItem
+json > ListItem = position
+json > position = 1
+json > name = Inicio
+json > Inicio = item
+json > item = https://municipiosargentinos.n
+json > position = 2
+json > name = Ranking
+json > https = //municipiosargentinos.net/ran
+json > position = 3
+json > name = Avellaneda
+json > Avellaneda = item
+json > @type = AdministrativeArea
+json > AdministrativeArea = @type
+json > @type = Place
+json > Place = @id
+json > Avellaneda = alternate Name
+json > alternate Name = Partido de Avellaneda
+json > Partido de Avellaneda = @type
+json > AdministrativeArea = name
+json > name = Provincia de Buenos Aires
+json > Provincia de Buenos Aires = @type
+json > @type = Country
+json > Country = name
+json > name = Argentina
+json > Argentina = @type
+json > @type = PropertyValue
+json > PropertyValue = property ID
+json > property ID = INDEC código de partido
+json > INDEC código de partido = value
+json > value = 06035
+json > image = https://municipiosargentinos.n
+json > PropertyValue = name
+json > name = Población (Censo 2022)
+json > value = 367554
+json > @type = GovernmentOrganization
+json > GovernmentOrganization = @id
+json > name = Municipalidad de Avellaneda
+json > Municipalidad de Avellaneda = @id
+json > @type = Person
+json > Person = name
+json > name = Magdalena Sierra
+json > Magdalena Sierra = job Title
+json > job Title = Intendenta

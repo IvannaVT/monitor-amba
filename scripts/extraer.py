@@ -362,7 +362,7 @@ def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, s
         if en_01:
             if campo != "seccion_electoral" or not fila01.get("seccion_electoral"):
                 fila01[campo] = d["valor"]
-        else:
+        elif campo in C.ESQUEMAS[C.F_INDICADORES]:
             fila04[campo] = d["valor"]
         obs = f"etiqueta='{d['etiqueta']}'; seccion='{d['seccion']}'; html_sha256={r.sha256[:16]}"
         if en_01 and campo != "poblacion_2022" and campo != "seccion_electoral":
@@ -381,7 +381,7 @@ def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, s
         if campo in fila04:
             fila01[campo] = fila04[campo]
     faltan = [c for c in CAMPOS_PORTAL if c not in hallados]
-    faltan_01 = [c for c in CAMPOS_FICHA_01 if c not in hallados and c != "coalicion_actual"]
+    faltan_01 = [c for c in CAMPOS_FICHA_01 if c not in hallados and c not in ("coalicion_actual", "intendente_condicion")]
     n_hallados = len([c for c in hallados if c != "fecha_actualizacion_portal"])
     out["campos"] = n_hallados
     if faltan or faltan_01:
