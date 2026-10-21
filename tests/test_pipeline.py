@@ -17,8 +17,9 @@ leer = lambda n: (FIX / n).read_text(encoding="utf-8")  # noqa: E731
 
 
 class R:
-    def __init__(self, status=200, text="", exc=None):
+    def __init__(self, status=200, text="", exc=None, url=None, history=(), location=None):
         self.status_code, self.text, self.encoding, self.apparent_encoding, self.exc = status, text, "utf-8", "utf-8", exc
+        self.url, self.history, self.headers = url, list(history), ({"Location": location} if location else {})
 
 
 class FakeSession:
@@ -33,7 +34,10 @@ class FakeSession:
             if self.robots is None:
                 return R(404)
             return R(200, self.robots) if isinstance(self.robots, str) else R(self.robots)
-        return self.paginas.get(url, R(404))
+        r = self.paginas.get(url, R(404))
+        if r.url is None:
+            r.url = url
+        return r
 
 
 def paginas(valor_indice="61,5"):
@@ -42,10 +46,10 @@ def paginas(valor_indice="61,5"):
     return {
         base + "/": R(text=leer("portada_prueba.html")),
         base + "/metodologia/": R(text=leer("metodologia_prueba.html")),
-        base + "/municipio/avellaneda/": R(text=a),
-        base + "/municipio/tres-de-febrero/": R(text="<html><p>sin tablas</p></html>"),
+        base + "/m/avellaneda/": R(text=a),
+        base + "/m/tres-de-febrero/": R(text="<html><p>sin tablas</p></html>"),
         # Vicente López: 403 (restricción de acceso)
-        base + "/municipio/vicente-lopez/": R(403),
+        base + "/m/vicente-lopez/": R(403),
     }
 
 
@@ -108,14 +112,14 @@ def test_csv_formato_y_formulas():
 # ------------------------------------------------------------- robots / http
 def test_robots_prohibe_y_no_se_consulta(dirs):
     res, ses = correr(dirs, paginas(), robots="User-agent: *\nDisallow: /")
-    assert all(not p.endswith("/municipio/avellaneda/") for p in ses.pedidos)
+    assert all(not p.endswith("/m/avellaneda/") for p in ses.pedidos)
     inc = C.leer_csv(dirs[0] / C.F_INCIDENCIAS)
     assert any(i["tipo_incidencia"] == "PROHIBIDO_POR_ROBOTS" for i in inc)
 
 
 def test_robots_no_verificable_falla_cerrada(dirs):
     res, ses = correr(dirs, paginas(), robots=500)
-    assert not any("/municipio/" in p for p in ses.pedidos)
+    assert not any("/m/" in p for p in ses.pedidos)
     assert any(i["tipo_incidencia"] == "ROBOTS_NO_VERIFICABLE" for i in C.leer_csv(dirs[0] / C.F_INCIDENCIAS))
 
 
@@ -170,7 +174,7 @@ def test_cambio_genera_alerta_e_historial(dirs):
 def test_falla_temporal_no_borra_datos_validos(dirs):
     correr(dirs, paginas(), fecha="2026-10-21")
     ant = C.leer_csv(dirs[0] / C.F_INDICADORES)
-    pag = paginas(); pag["https://municipiosargentinos.net/municipio/avellaneda/"] = R(500)
+    pag = paginas(); pag["https://municipiosargentinos.net/m/avellaneda/"] = R(500)
     correr(dirs, pag, fecha="2026-10-28")
     assert C.leer_csv(dirs[0] / C.F_INDICADORES) == ant
     assert C.leer_csv(dirs[0] / C.F_MUNICIPIOS)[0]["indice_global"] == "61,5"
@@ -199,3 +203,130 @@ def test_validador_detecta_errores(dirs):
 def test_config_40_municipios_unicos():
     ids = [m["municipio_id"] for m in C.cargar_municipios_cfg()]
     assert len(ids) == len(set(ids)) == 40
+
+
+# ------------------------------------------- resolución de URL, errores, informe
+BASE = "https://municipiosargentinos.net"
+FICHA = BASE + "/m/avellaneda/"
+
+
+def inc(dirs):
+    return C.leer_csv(dirs[0] / C.F_INCIDENCIAS)
+
+
+def test_url_configurada_tiene_prioridad_y_no_consulta_portada(dirs):
+    res, ses = correr(dirs, paginas(), municipios="avellaneda")
+    assert BASE + "/" not in ses.pedidos and FICHA in ses.pedidos
+    assert res["municipios"]["Avellaneda"]["url_origen"] == "configurada"
+    assert res["municipios"]["Avellaneda"]["campos_extraidos"] >= 6
+
+
+def test_404_en_configurada_usa_respaldo_de_portada_y_registra_ausencia(dirs):
+    pag = paginas()
+    pag[FICHA] = R(404)
+    pag[BASE + "/otra/avellaneda/"] = R(text=leer("municipio_prueba_a.html"))
+    pag[BASE + "/"] = R(text='<a href="/otra/avellaneda/">Avellaneda</a>')
+    res, _ = correr(dirs, pag, municipios="avellaneda")
+    assert res["municipios"]["Avellaneda"]["url_origen"] == "descubierta" and res["municipios"]["Avellaneda"]["campos_extraidos"] > 0
+    assert res["paginas_ausentes"] == 1
+    assert "PAGINA_AUSENTE" in {i["tipo_incidencia"] for i in inc(dirs)}
+
+
+@pytest.mark.parametrize("estado,tipo", [(403, "ACCESO_DENEGADO_HTTP"), (429, "LIMITE_SOLICITUDES_429"),
+                                         (500, "ERROR_HTTP"), (401, "ACCESO_DENEGADO_HTTP")])
+def test_errores_no_son_pagina_no_encontrada(dirs, estado, tipo):
+    pag = paginas()
+    pag[FICHA] = R(estado)
+    res, ses = correr(dirs, pag, municipios="avellaneda")
+    tipos = [i["tipo_incidencia"] for i in inc(dirs) if i["municipio_id"] == "ba_avellaneda"]
+    assert tipo in tipos and "PAGINA_NO_ENCONTRADA" not in tipos and "PAGINA_AUSENTE" not in tipos
+    assert ses.pedidos.count(FICHA) == 1 and BASE + "/" not in ses.pedidos  # sin reintento ni respaldo
+    d = next(i for i in inc(dirs) if i["tipo_incidencia"] == tipo)["descripcion"]
+    assert f"HTTP {estado}" in d and "url_final=" in d and "redirecciones" in d
+    assert res["respuestas_bloqueadas"] == (1 if estado != 500 else 0) and res["municipios_con_datos"] == 0
+
+
+def test_redireccion_interna_se_registra_y_se_sanea_la_url(dirs):
+    pag = paginas()
+    destino = BASE + "/m/avellaneda-2/"
+    pag[FICHA] = R(text=leer("municipio_prueba_a.html"), url=destino + "?token=SECRETO#x",
+                   history=[R(301, url=FICHA, location=destino + "?token=SECRETO")])
+    res, _ = correr(dirs, pag, municipios="avellaneda")
+    f = C.leer_csv(dirs[0] / C.F_FUENTES)
+    assert f and all(x["documento_url"] == destino for x in f if x["entidad"] == "indicador_portal")
+    assert "SECRETO" not in "".join((dirs[0] / n).read_text(encoding="utf-8-sig") for n in C.ESQUEMAS)
+    assert any(e["url"] == FICHA for e in res["detalle_solicitudes"])
+
+
+def test_redireccion_a_otro_dominio_no_se_sigue(dirs):
+    pag = paginas()
+    pag[FICHA] = R(text="<html>x</html>", url="https://otro.example/x?a=1",
+                   history=[R(302, url=FICHA, location="https://otro.example/x?a=1")])
+    res, _ = correr(dirs, pag, municipios="avellaneda")
+    i = next(i for i in inc(dirs) if i["tipo_incidencia"] == "REDIRECCION_EXTERNA")
+    assert "302 https://otro.example/x" in i["descripcion"] and "a=1" not in i["descripcion"]
+    assert res["municipios_con_datos"] == 0
+
+
+def test_pagina_no_encontrada_solo_si_portada_ok_sin_url_y_sin_enlace(dirs, tmp_path):
+    cfg = tmp_path / "cfg.csv"
+    cfg.write_text("\ufeffmunicipio_id;municipio;indec_codigo;seccion_electoral;url_portal_municipio\n"
+                   "ba_moron;Morón;;;\nba_avellaneda;Avellaneda;;;\n", encoding="utf-8")
+    pag = paginas()
+    ses = FakeSession(pag)
+    res = E.ejecutar("moron", "2026-10-21", cliente=E.Cliente(pausa=0, session=ses), dir_actual=dirs[0],
+                     dir_historico=dirs[1], cfg_path=cfg)
+    assert [i["tipo_incidencia"] for i in inc(dirs) if i["municipio_id"] == "ba_moron"] == ["PAGINA_NO_ENCONTRADA"]
+    # si la portada falla, NO es "no encontrada"
+    d2 = (dirs[0].parent / "a2", dirs[0].parent / "h2")
+    ses2 = FakeSession({BASE + "/": R(503)})
+    E.ejecutar("moron", "2026-10-21", cliente=E.Cliente(pausa=0, session=ses2), dir_actual=d2[0], dir_historico=d2[1], cfg_path=cfg)
+    assert [i["tipo_incidencia"] for i in C.leer_csv(d2[0] / C.F_INCIDENCIAS) if i["municipio_id"] == "ba_moron"] == ["ERROR_HTTP"]
+
+
+def test_config_incluye_las_tres_urls_verificadas():
+    u = {m["municipio_id"]: m["url_portal_municipio"] for m in C.cargar_municipios_cfg()}
+    assert u["ba_avellaneda"] == BASE + "/m/avellaneda/"
+    assert u["ba_vicente_lopez"] == BASE + "/m/vicente-lopez/"
+    assert u["ba_tres_de_febrero"] == BASE + "/m/tres-de-febrero/"
+    assert sum(1 for v in u.values() if v) == 3
+
+
+def test_parsing_json_embebido_y_etiquetas_no_reconocidas():
+    h, _ = E.interpretar_pagina(leer("ficha_json_prueba.html"))
+    assert h["indice_global"]["valor"] == 48.5 and h["ranking_provincial"]["valor"] == 30
+    assert h["transparencia_semaforo"]["valor"] == "AMARILLO" and h["seguridad_puntaje"]["valor"] == 62.5
+    assert "campo desconocido" in [x.lower() for x in E.etiquetas_no_reconocidas(leer("ficha_json_prueba.html"))]
+
+
+def test_descubre_rutas_m_en_html_crudo():
+    urls = [u for _, u in E.descubrir_enlaces(leer("ficha_json_prueba.html"), BASE + "/")]
+    assert BASE + "/m/merlo/" in urls
+    assert E.encontrar_pagina_municipio([("", u) for u in urls], "Merlo")[0] == BASE + "/m/merlo/"
+
+
+def test_campos_ausentes_no_pisan_valores_historicos(dirs):
+    correr(dirs, paginas("61,5"), fecha="2026-10-21", municipios="avellaneda")
+    pag = paginas()
+    pag[FICHA] = R(text="<table><tr><td>Índice municipal general</td><td>61,5</td></tr></table>")  # ficha parcial
+    res, _ = correr(dirs, pag, fecha="2026-10-28", municipios="avellaneda")
+    m = C.leer_csv(dirs[0] / C.F_MUNICIPIOS)[0]
+    assert m["transparencia_puntaje"] == "70,25" and m["control_puntaje"] == "40" and m["indice_global"] == "61,5"
+    assert len(C.leer_csv(dirs[0] / C.F_INDICADORES)) == 1 and res["alertas_nuevas"] == 0
+    # el valor vuelve a cambiar tras una captura parcial: se compara contra el último valor conocido
+    pag[FICHA] = R(text=leer("municipio_prueba_a.html").replace("70,25", "50"))
+    correr(dirs, pag, fecha="2026-11-04", municipios="avellaneda")
+    assert [a["variable"] for a in C.leer_csv(dirs[0] / C.F_ALERTAS)] == ["transparencia_puntaje"]
+    assert V.validar(dirs[0], "prueba")[0] == []
+
+
+def test_informe_ejecucion_diferencia_categorias(dirs):
+    pag = paginas()
+    pag[BASE + "/m/vicente-lopez/"] = R(403)
+    pag[BASE + "/m/tres-de-febrero/"] = R(404)
+    res, _ = correr(dirs, pag)
+    assert (res["solicitudes_exitosas"], res["respuestas_bloqueadas"], res["municipios_con_datos"]) == (3, 1, 1)
+    assert res["paginas_ausentes"] == 1
+    md = E.informe_ejecucion(res)
+    for t in ("con éxito", "bloqueadas", "ausentes", "efectivamente extraídos", "ACCESO_DENEGADO_HTTP"):
+        assert t in md
