@@ -23,6 +23,36 @@ CAMPOS_0_100 = ["indice_global", "transparencia_puntaje", "servicios_seguridad_p
                 "control_puntaje", "transparencia_relevamiento_propio", "transparencia_asap",
                 "cobertura_agua_pct", "cobertura_cloacas_pct", "cobertura_gas_pct"]
 CAMPOS_BANCAS = ["bancas_oficialismo", "bancas_aliadas", "bancas_oposicion", "bancas_independientes", "bancas_sin_verificar"]
+# Columnas numéricas tipadas. En el resto (p. ej. valor_obtenido, valor_anterior/actual, observaciones)
+# se preserva el texto original y NO se aplican reglas de formato numérico.
+#   dec = puntaje/tasa/monto con coma decimal y sin separador de miles ("12,3")
+#   int = cantidad entera sin separadores ("367554"; el texto original con "367.554" vive en 05)
+_DEC_COMUN = ["indice_global", "transparencia_puntaje", "servicios_seguridad_puntaje", "seguridad_puntaje", "control_puntaje"]
+COLUMNAS_NUMERICAS: dict[str, dict[str, str]] = {
+    C.F_MUNICIPIOS: {**{c: "dec" for c in _DEC_COMUN + ["porcentaje_oficialismo", "porcentaje_apoyo_confirmado"]},
+                     **{c: "int" for c in ["poblacion_2022", "total_bancas", "ranking_provincial"] + CAMPOS_BANCAS}},
+    C.F_INDICADORES: {**{c: "dec" for c in _DEC_COMUN + [
+        "transparencia_relevamiento_propio", "transparencia_asap", "homicidios_tasa_100k", "cobertura_agua_pct",
+        "cobertura_cloacas_pct", "cobertura_gas_pct", "cargos_htc_monto", "multas_htc_monto", "presupuesto_total",
+        "gasto_por_habitante"]},
+        **{c: "int" for c in ["ranking_provincial", "ranking_pares", "victimas_homicidio_ultimo_anio", "señales_control",
+                              "empleados_municipales"]}},
+    C.F_ALERTAS: {"variacion_absoluta": "dec", "variacion_relativa_pct": "dec"},
+}
+RE_NUM = {"dec": re.compile(r"-?\d+(,\d+)?"), "int": re.compile(r"-?\d+")}
+
+
+def error_numerico(valor: str, tipo: str) -> str | None:
+    """Motivo si `valor` no cumple el formato de su columna tipada (None si es válido)."""
+    if RE_NUM[tipo].fullmatch(valor):
+        return None
+    if re.fullmatch(r"-?\d{1,3}(\.\d{3})+(,\d+)?", valor):
+        return f"separador de miles '{valor}' (se escribe sin separadores)"
+    if tipo == "dec" and re.fullmatch(r"-?\d+\.\d+", valor):
+        return f"decimal con punto '{valor}' (debe usar coma)"
+    return f"valor no numérico '{valor}' (se espera {'decimal con coma' if tipo == 'dec' else 'entero'})"
+
+
 INICIO_FORMULA = ("=", "+", "-", "@", "\t", "\r")
 
 
@@ -58,8 +88,9 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
                     err.append(f"{nombre}:{i} {k}: posible inyección de fórmula '{v[:20]}'")
                 if k in CAMPOS_FECHA and v and not RE_FECHA.match(v):
                     err.append(f"{nombre}:{i} {k}: fecha inválida '{v}'")
-                if v and "." in v and re.fullmatch(r"\d+\.\d+", v) and k not in ("documento_url",):
-                    err.append(f"{nombre}:{i} {k}: decimal con punto '{v}' (debe usar coma)")
+                tipo_col = COLUMNAS_NUMERICAS.get(nombre, {}).get(k)
+                if v and tipo_col and (motivo := error_numerico(v, tipo_col)):
+                    err.append(f"{nombre}:{i} {k}: {motivo}")
             mid = f.get("municipio_id")
             if mid and mid not in ids_cfg and mid != "GLOBAL":
                 err.append(f"{nombre}:{i} municipio_id desconocido '{mid}'")

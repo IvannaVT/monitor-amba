@@ -414,3 +414,52 @@ def test_diagnostico_guarda_html_y_estructura(dirs, tmp_path):
     est = (tmp_path / "diag" / "ba_avellaneda_estructura.txt").read_text(encoding="utf-8")
     assert "Datos clave" in est and "Cómo se compone su índice" in est and "indice_global = 82.2" in est
     assert (tmp_path / "diag" / "ba_avellaneda.html").exists()
+
+
+# ------------------------------------------- formato numérico: miles vs. decimales
+def _ficha_a_01_05(dirs):
+    pag = paginas()
+    pag[FICHA] = R(text=leer("ficha_ref_a.html"))
+    correr(dirs, pag, municipios="avellaneda")
+
+
+def test_valor_obtenido_preserva_miles_y_pasa_la_validacion(dirs):
+    _ficha_a_01_05(dirs)
+    p = dirs[0] / C.F_FUENTES
+    filas = C.leer_csv(p)
+    pob = next(f for f in filas if f["campo_verificado"] == "poblacion_2022")
+    assert pob["valor_obtenido"].startswith("342.677")          # texto original, con separador de miles
+    for orig in ("342.677", "367.554", "282.280", "364.176", "56.2", "1.234,5"):
+        pob["valor_obtenido"] = orig                              # genérico: se preserva sin reglas decimales
+        C.escribir_csv(p, filas, C.ESQUEMAS[C.F_FUENTES])
+        assert V.validar(dirs[0], "prueba")[0] == [], orig
+    assert C.leer_csv(dirs[0] / C.F_MUNICIPIOS)[0]["poblacion_2022"] == "342677"
+
+
+@pytest.mark.parametrize("archivo,col,valor,esperado", [
+    (C.F_MUNICIPIOS, "poblacion_2022", "367554", None),
+    (C.F_MUNICIPIOS, "poblacion_2022", "367.554", "separador de miles"),
+    (C.F_MUNICIPIOS, "indice_global", "56,2", None),
+    (C.F_MUNICIPIOS, "indice_global", "56.2", "decimal con punto"),
+    (C.F_MUNICIPIOS, "indice_global", "1.056,2", "separador de miles"),
+    (C.F_MUNICIPIOS, "ranking_provincial", "12,5", "no numérico"),
+    (C.F_MUNICIPIOS, "seguridad_puntaje", "abc", "no numérico"),
+])
+def test_columnas_tipadas_distinguen_miles_y_decimales(dirs, archivo, col, valor, esperado):
+    _ficha_a_01_05(dirs)
+    p = dirs[0] / archivo
+    filas = C.leer_csv(p)
+    filas[0][col] = valor
+    C.escribir_csv(p, filas, C.ESQUEMAS[archivo])
+    errores = [e for e in V.validar(dirs[0], "prueba")[0] if col in e and ("miles" in e or "decimal" in e or "no numérico" in e)]
+    if esperado is None:
+        assert errores == []
+    else:
+        assert errores and esperado in errores[0]
+
+
+def test_error_numerico_unitario():
+    assert V.error_numerico("367554", "int") is None and V.error_numerico("367.554", "int")
+    assert V.error_numerico("56,2", "dec") is None and V.error_numerico("0", "dec") is None
+    assert "decimal con punto" in V.error_numerico("56.2", "dec")
+    assert "miles" in V.error_numerico("1.234.567", "int") and V.error_numerico("-3,5", "dec") is None
