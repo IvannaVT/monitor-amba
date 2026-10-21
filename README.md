@@ -17,3 +17,7 @@ python scripts/extraer.py --municipios avellaneda,vicente_lopez,tres_de_febrero
 python scripts/validar.py --modo prueba --informe docs/informe_calidad.md
 ```
 Sin APIs pagas ni IA: solo `requests`, `beautifulsoup4`, `lxml`. Respeta `robots.txt` y no elude bloqueos. Detalles: [metodología](docs/metodologia.md).
+
+## Directorio de vinculación institucional
+Relevamiento de canales de contacto (Ceremonial y Protocolo, Relaciones Institucionales, Secretaría Privada, Despacho/Jefatura, Concejo Deliberante, Mesa de Entradas) en `data/actual/03_amba_contactos_protocolo.csv`.
+`python scripts/contactos.py --municipios avellaneda,vicente_lopez,tres_de_febrero` · workflow manual *Relevar contactos institucionales AMBA*. Independiente de los indicadores. Ver [metodología](docs/metodologia.md).
