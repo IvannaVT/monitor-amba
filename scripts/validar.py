@@ -152,6 +152,12 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         if f.get("intendente_nombre") and f.get("intendente_apellido") and \
                 f"{f['intendente_nombre']} {f['intendente_apellido']}" != f.get("intendente_nombre_completo"):
             adv.append(f"{f['municipio_id']}: nombre+apellido no reconstruyen intendente_nombre_completo (¿override manual?)")
+    for r_ in C.leer_csv(C.ARCHIVO_NOMBRES):  # separaciones manuales: documentadas y coherentes con el nombre original
+        ref = f"config/intendentes_nombres.csv '{r_.get('nombre_completo', '')}'"
+        if not (r_.get("fuente_revision") or "").strip():
+            err.append(f"{ref}: falta fuente_revision (sin documento de respaldo no se aplica)")
+        if f"{r_.get('nombre', '')} {r_.get('apellido', '')}".split() != (r_.get("nombre_completo") or "").split():
+            err.append(f"{ref}: nombre + apellido no reconstruyen el nombre completo")
     codigos = [m_["indec_codigo"] for m_ in C.cargar_municipios_cfg() if m_.get("indec_codigo")]
     for cod in codigos:
         if not re.fullmatch(r"06\d{3}", cod):

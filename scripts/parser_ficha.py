@@ -210,15 +210,25 @@ def _c_fallo(t: str, et: str):
 COMPUESTOS = {"homicidios_tasa_100k": _c_homicidios, "empleados_municipales": _c_empleo, "ultimo_fallo_htc": _c_fallo}
 
 
+# El portal escribe "(PARTIDO · frente X)": "frente"/"coalición" en MINÚSCULA es el conector de la alianza. Con mayúscula inicial
+# forma parte del nombre propio de un partido ("Frente Renovador", "Frente Grande") y no es una alianza.
+_CONECTOR = re.compile(r"(frente|coalici[oó]n)\s+(.+)")
+
+
 def _p_intendente(m):
     out = [("fecha_asuncion", m.group(1), "'en funciones desde' del portal")]
+    partido, extras = None, []
     for i, p in enumerate(x.strip() for x in re.split(r"\s*[·•|]\s*", m.group(2)) if x.strip()):
-        if mf := re.match(r"(?i)frente\s+(.+)", p):
-            out.append(("frente_electoral", mf.group(1).strip(), ""))
-        elif mc := re.match(r"(?i)coalici[oó]n\s+(.+)", p):
-            out.append(("coalicion_actual", mc.group(1).strip(), ""))
+        if mk := _CONECTOR.fullmatch(p):
+            campo = "frente_electoral" if mk.group(1) == "frente" else "coalicion_actual"
+            out.append((campo, mk.group(2).strip(), "tras el conector en minúscula del portal"))
         elif i == 0:
-            out.append(("partido_politico", p, "primer elemento entre paréntesis del portal (el portal no distingue partido/frente)"))
+            partido = p  # el nombre se conserva completo aunque empiece con "Frente"
+        else:
+            extras.append(p)  # no se clasifica sin evidencia
+    if partido:
+        obs = "primer elemento entre paréntesis del portal (el portal no distingue partido/frente)"
+        out.append(("partido_politico", partido, obs + (f"; elementos sin clasificar: {' | '.join(extras)}" if extras else "")))
     return out
 
 
