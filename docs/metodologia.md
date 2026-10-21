@@ -60,3 +60,8 @@ Fuentes políticas oficiales (intendentes, HCD, contactos), CABA, matriz integra
 4. **Alternativos.** Si no hay oficina de Protocolo/Relaciones identificable, la incidencia lo indica y quedan registrados Mesa de Entradas y el contacto general como canal alternativo.
 5. **Incremental.** No se pisan datos con vacíos; si un canal deja de verse se conserva sin vigencia confirmada (`CONTACTO_YA_NO_VISIBLE`); cambio de correo/teléfono → alerta `CAMBIO_CONTACTO_OFICIAL`; nuevo canal → `NUEVO_CONTACTO_OFICIAL` (la primera ejecución es línea de base). Historial en `data/historico/`.
 6. **Límites conocidos.** La atribución es heurística (estructura HTML) y debe afinarse con las páginas reales: `--diagnostico DIR` guarda el HTML público consultado. No se leen PDF, correos ofuscados por scripts ni contenido cargado por JavaScript.
+
+### Redirecciones y sitios oficiales (contactos)
+- Una redirección (301/302/303/307/308) **no es un error por sí misma**. `ClienteContactos` la sigue a mano: en cada salto verifica `robots.txt` y el certificado TLS (no se desactiva ni se reintenta) y solo la acepta si el destino es del mismo dominio (www/apex/subdominio, http→https) o un dominio listado en `dominios_verificados` de `config/sitios_oficiales.csv` (verificado a mano como oficial de ese municipio). Cualquier otro destino se rechaza como `REDIRECCION_EXTERNA` **sin solicitarlo** (p. ej. un municipio homónimo de otra provincia). Se registran código, URL final y saltos.
+- `estado=CONFIRMADO`: una persona verificó que es el sitio oficial (no se exige que el título nombre al municipio). Sin confirmar, se exige título con el nombre y dominio `gob.ar`/`gov.ar`.
+- El cliente de indicadores (`extraer.py`) no cambia.

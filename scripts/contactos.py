@@ -14,7 +14,9 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import comun as C  # noqa: E402
@@ -27,6 +29,82 @@ SITIOS = C.DIR_CONFIG / "sitios_oficiales.csv"
 MAX_PAGINAS, MAX_PAGINAS_HCD = 12, 6
 CAMPOS_CANAL = ["responsable_nombre", "responsable_apellido", "responsable_nombre_completo", "cargo", "email_institucional",
                 "telefono_institucional", "interno", "direccion", "horario_atencion", "sitio_web", "url_fuente", "evidencia"]
+
+
+REDIRECCIONES = (301, 302, 303, 307, 308)
+MAX_SALTOS = 5
+
+
+def _mismo_dominio(a: str, b: str) -> bool:
+    """www/apex/subdominio del mismo dominio (no cambia de titular)."""
+    a, b = CP.dominio_base(a or ""), CP.dominio_base(b or "")
+    return bool(a and b) and (a == b or a.endswith("." + b) or b.endswith("." + a))
+
+
+class ClienteContactos(E.Cliente):
+    """Cliente que sigue las redirecciones a mano.
+
+    - robots.txt y el certificado TLS se verifican en CADA salto (nunca se solicita un destino sin comprobarlo antes).
+    - Una redirección no es un error por sí misma: se acepta si el destino es del mismo dominio (www/apex/subdominio,
+      http->https) o de un dominio verificado como oficial para ese municipio (`hosts_ok`, salido de la configuración).
+    - Cualquier otro destino (p. ej. el mismo nombre en otra provincia) se rechaza con REDIRECCION_EXTERNA sin solicitarlo.
+    """
+
+    def get(self, url: str, hosts_ok=frozenset()) -> E.Respuesta:
+        r = self._get_con_saltos(url, {CP.dominio_base(h) for h in hosts_ok})
+        self.eventos.append({"url": E.url_segura(url), "status": r.status, "ok": r.ok, "tipo_error": r.tipo_error})
+        return r
+
+    def _get_con_saltos(self, url: str, ok: set[str]) -> E.Respuesta:
+        saltos, actual = [], url
+        for _ in range(MAX_SALTOS + 1):
+            rp, motivo = self._robots_de(actual)
+            ctx = dict(url_final=E.url_segura(actual), redirecciones=tuple(saltos))
+            if rp is None:
+                return E.Respuesta(url, False, tipo_error="ROBOTS_NO_VERIFICABLE", detalle=motivo, **ctx)
+            if not rp.can_fetch(self.ua, actual):
+                return E.Respuesta(url, False, tipo_error="PROHIBIDO_POR_ROBOTS", detalle="robots.txt no permite esta ruta", **ctx)
+            try:
+                self._esperar(float(rp.crawl_delay(self.ua) or rp.crawl_delay("*") or 0))
+                self.n_solicitudes += 1
+                r = self.s.get(actual, timeout=self.timeout, allow_redirects=False)   # TLS se verifica (verify por defecto)
+            except requests.exceptions.RequestException as exc:
+                tipo, det = self._clasificar(exc)
+                return E.Respuesta(url, False, tipo_error=tipo, detalle=det, **ctx)
+            loc = (getattr(r, "headers", None) or {}).get("Location")
+            if r.status_code not in REDIRECCIONES or not loc:
+                break
+            destino = urljoin(actual, loc)
+            saltos.append((r.status_code, E.url_segura(destino)))
+            ctx = dict(url_final=E.url_segura(destino), redirecciones=tuple(saltos))
+            po, pd = urlparse(actual), urlparse(destino)
+            if pd.scheme not in ("http", "https") or (po.scheme == "https" and pd.scheme != "https"):
+                return E.Respuesta(url, False, r.status_code, tipo_error="REDIRECCION_NO_SEGURA",
+                                   detalle="la redirección degrada https o cambia de esquema; no se sigue", **ctx)
+            if not (_mismo_dominio(po.hostname, pd.hostname) or CP.dominio_base(pd.hostname or "") in ok):
+                return E.Respuesta(url, False, r.status_code, tipo_error="REDIRECCION_EXTERNA",
+                                   detalle=f"redirige a {pd.hostname}, que no está verificado como oficial para este municipio; no se sigue", **ctx)
+            actual = destino
+        else:
+            return E.Respuesta(url, False, r.status_code, tipo_error="REDIRECCION_EXCESIVA",
+                               detalle=f"más de {MAX_SALTOS} redirecciones", url_final=E.url_segura(actual), redirecciones=tuple(saltos))
+        ctx = dict(url_final=E.url_segura(actual), redirecciones=tuple(saltos))
+        if r.status_code == 429:
+            return E.Respuesta(url, False, 429, tipo_error="LIMITE_SOLICITUDES_429", detalle="HTTP 429; no se reintenta ni se eluden límites", **ctx)
+        if r.status_code in (401, 403):
+            return E.Respuesta(url, False, r.status_code, tipo_error="ACCESO_DENEGADO_HTTP", detalle=f"HTTP {r.status_code}; no se eluden restricciones", **ctx)
+        if r.status_code in (404, 410):
+            return E.Respuesta(url, False, r.status_code, tipo_error="PAGINA_AUSENTE", detalle=f"HTTP {r.status_code}: la página no existe", **ctx)
+        if r.status_code >= 400:
+            return E.Respuesta(url, False, r.status_code, tipo_error="ERROR_HTTP", detalle=f"HTTP {r.status_code}", **ctx)
+        r.encoding = r.encoding or getattr(r, "apparent_encoding", None) or "utf-8"
+        if not (r.text or "").strip():
+            return E.Respuesta(url, False, r.status_code, tipo_error="RESPUESTA_VACIA", detalle="HTTP 200 sin contenido", **ctx)
+        return E.Respuesta(url, True, r.status_code, texto=r.text, **ctx)
+
+
+def _get(cli, url: str, permitidos: set[str]):
+    return cli.get(url, hosts_ok=permitidos) if isinstance(cli, ClienteContactos) else cli.get(url)
 
 
 def cargar_sitios(ruta: Path = SITIOS) -> dict[str, dict]:
@@ -61,7 +139,11 @@ def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pa
         out["incidencias"].append(_inc(mid, "sitio_oficial", "SITIO_OFICIAL_NO_CONFIGURADO", "No hay sitio oficial en config/sitios_oficiales.csv.",
                                        E.BASE_URL, fecha, snap, "ALTO", "Cargar y verificar el sitio oficial del municipio."))
         return out
-    r = cli.get(url0)
+    hcd_cfg = (sitio.get("sitio_hcd") or "").strip()
+    # Destinos que una redirección puede alcanzar además del mismo dominio: solo los verificados en la configuración.
+    permitidos = {urlparse(u).hostname or "" for u in (url0, hcd_cfg) if u} | \
+                 {d.strip() for d in (sitio.get("dominios_verificados") or "").split(";") if d.strip()}
+    r = _get(cli, url0, permitidos)
     if not r.ok:
         out["incidencias"].append(E._inc_respuesta(mid, r, fecha, snap, "contacto:sitio_oficial"))
         return out
@@ -69,16 +151,18 @@ def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pa
     texto_id = " ".join([cab.title.get_text(" ") if cab.title else ""] + [h.get_text(" ") for h in cab.find_all(["h1", "h2"])[:6]] +
                         [m.get("content", "") for m in cab.find_all("meta", attrs={"property": "og:site_name"})])
     host0 = urlparse(r.url_final or url0).hostname or ""
-    if C.normalizar_texto(nombre) not in C.normalizar_texto(texto_id) or not (_oficial(host0) or sitio.get("estado") == "CONFIRMADO"):
+    # CONFIRMADO = una persona verificó que es el sitio oficial de este municipio (p. ej. su título no nombra al municipio).
+    verificado = sitio.get("estado") == "CONFIRMADO" or (C.normalizar_texto(nombre) in C.normalizar_texto(texto_id) and _oficial(host0))
+    if not verificado:
         out["incidencias"].append(_inc(mid, "sitio_oficial", "SITIO_NO_VERIFICADO",
                                        f"{r.diagnostico()}; no se pudo verificar que sea el sitio oficial de {nombre} "
                                        f"(título/encabezados sin el nombre o dominio fuera de gob.ar/gov.ar).", url0, fecha, snap, "ALTO",
                                        "Revisar el dominio; marcar estado=CONFIRMADO en config solo tras verificación manual."))
         return out
     out["sitio_ok"] = True
-    hcd_cfg = (sitio.get("sitio_hcd") or "").strip()
     bases = {CP.dominio_base(host0)} | ({CP.dominio_base(urlparse(hcd_cfg).hostname or "")} if hcd_cfg else set())
-    cola, vistas, expandidas = [(url0, r.texto)], {E.url_segura(url0)}, set()
+    final0 = r.url_final or url0   # los enlaces relativos se resuelven contra el destino final, no contra la URL anterior a la redirección
+    cola, vistas, expandidas = [(final0, r.texto)], {E.url_segura(url0), E.url_segura(final0)}, set()
     pendientes = [(10, "", hcd_cfg)] if hcd_cfg else []
     n_hcd = 0
     while cola or pendientes:
@@ -89,12 +173,12 @@ def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pa
             if E.url_segura(url) in vistas or len(vistas) >= max_paginas + MAX_PAGINAS_HCD:
                 continue
             vistas.add(E.url_segura(url))
-            rr = cli.get(url)
+            rr = _get(cli, url, permitidos)
             if not rr.ok:
                 if not rr.pagina_ausente:
                     out["incidencias"].append(E._inc_respuesta(mid, rr, fecha, snap, "contacto:pagina"))
                 continue
-            html = rr.texto
+            html, url = rr.texto, (rr.url_final or url)
         host = CP.dominio_base(urlparse(url).hostname or "")
         if _oficial(host) or host in bases:
             bases.add(host)
@@ -327,7 +411,7 @@ def main(argv=None) -> int:
     fecha, snap = a.fecha or ahora.strftime("%Y-%m-%d"), C.snapshot_desde(ahora)
     cfg_all = C.cargar_municipios_cfg()
     sel = E.seleccionar(cfg_all, a.municipios)
-    sitios, cli = cargar_sitios(), E.Cliente(pausa=a.pausa)
+    sitios, cli = cargar_sitios(), ClienteContactos(pausa=a.pausa)
     resultados = [relevar_municipio(cli, c, sitios.get(c["municipio_id"], {}), fecha, snap, a.max_paginas, a.diagnostico) for c in sel]
     resumen = aplicar(resultados, fecha, snap, C.DIR_ACTUAL, C.DIR_HISTORICO)
     resumen["solicitudes_http"] = cli.n_solicitudes
