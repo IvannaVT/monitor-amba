@@ -29,7 +29,7 @@ class FakeSession:
     def __init__(self, paginas, robots=None):
         self.headers, self.paginas, self.robots, self.pedidos = {}, paginas, robots, []
 
-    def get(self, url, timeout=None):
+    def get(self, url, timeout=None, allow_redirects=True):
         self.pedidos.append(url)
         if url.endswith("/robots.txt"):
             if self.robots is None:

@@ -20,6 +20,7 @@ DIR_CONFIG = RAIZ / "config"
 ARCHIVO_MUNICIPIOS_CFG = DIR_CONFIG / "municipios_amba.csv"
 ARCHIVO_REGLAS = DIR_CONFIG / "reglas_alertas.json"
 ARCHIVO_NOMBRES = DIR_CONFIG / "intendentes_nombres.csv"
+ARCHIVO_SITIOS = DIR_CONFIG / "sitios_oficiales.csv"
 
 F_MUNICIPIOS = "01_amba_municipios.csv"
 F_BLOQUES = "02_amba_concejos_bloques.csv"
