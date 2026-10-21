@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 extraccion.json
 informe_ejecucion.md
+diagnostico/

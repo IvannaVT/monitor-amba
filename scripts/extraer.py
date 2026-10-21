@@ -40,58 +40,10 @@ USER_AGENT = (
     "relevamiento de datos publicos; sin evasion de restricciones)"
 )
 
-# --------------------------------------------------------------------------
-# Campos del portal -> columna de 04, tipo y sinónimos de etiqueta.
-# La coincidencia es por igualdad de la etiqueta normalizada (sin tildes), no
-# por subcadena, para no confundir p. ej. "transparencia" con "transparencia asap".
-# --------------------------------------------------------------------------
-CAMPOS_PORTAL: dict[str, dict] = {
-    "indice_global": dict(tipo="num", sin=["indice municipal general", "indice general", "indice municipal", "indice global", "puntaje general"]),
-    "ranking_provincial": dict(tipo="int", sin=["ranking provincial", "posicion provincial", "ranking en la provincia"]),
-    "ranking_pares": dict(tipo="int", sin=["ranking por grupo", "ranking grupo comparable", "ranking en el grupo", "ranking pares"]),
-    "grupo_comparacion": dict(tipo="txt", sin=["grupo de comparacion", "grupo comparable", "grupo de pares"]),
-    "transparencia_puntaje": dict(tipo="num", sin=["transparencia", "pilar transparencia", "puntaje transparencia"]),
-    "transparencia_relevamiento_propio": dict(tipo="num", sin=["relevamiento propio", "transparencia activa", "relevamiento propio de transparencia activa"]),
-    "transparencia_asap": dict(tipo="num", sin=["indice de transparencia fiscal asap", "transparencia fiscal asap", "asap", "itf asap"]),
-    "transparencia_semaforo": dict(tipo="semaforo", sin=["semaforo de transparencia", "semaforo", "transparencia semaforo"]),
-    "presupuesto_publicado": dict(tipo="bool", sin=["presupuesto publicado", "publica presupuesto", "publicacion del presupuesto"]),
-    "ejecucion_publicada": dict(tipo="bool", sin=["ejecucion publicada", "ejecucion presupuestaria publicada", "publicacion de ejecucion presupuestaria"]),
-    "servicios_seguridad_puntaje": dict(tipo="num", sin=["servicios y seguridad", "pilar servicios y seguridad"]),
-    "seguridad_puntaje": dict(tipo="num", sin=["seguridad", "puntaje seguridad", "puntaje de seguridad", "seguridad puntaje"]),
-    "homicidios_tasa_100k": dict(tipo="num", sin=["tasa de homicidios dolosos", "tasa de homicidios", "homicidios por 100 000 habitantes", "homicidios cada 100 000 habitantes"]),
-    "homicidios_periodo": dict(tipo="txt", sin=["periodo de la tasa de homicidios", "periodo homicidios"]),
-    "victimas_homicidio_ultimo_anio": dict(tipo="int", sin=["victimas de homicidio", "victimas homicidios", "victimas ultimo anio"]),
-    "victimas_homicidio_anio": dict(tipo="int", sin=["anio de las victimas", "anio victimas homicidio"]),
-    "cobertura_agua_pct": dict(tipo="num", sin=["cobertura de agua de red", "agua de red", "cobertura de agua"]),
-    "cobertura_cloacas_pct": dict(tipo="num", sin=["cobertura de cloacas", "cloacas"]),
-    "cobertura_gas_pct": dict(tipo="num", sin=["cobertura de gas de red", "gas de red", "cobertura de gas"]),
-    "control_puntaje": dict(tipo="num", sin=["control externo y judicial", "control", "pilar control", "puntaje control"]),
-    "ultimo_fallo_htc": dict(tipo="txt", sin=["ultimo fallo del htc", "ultimo fallo htc", "ultimo fallo del tribunal de cuentas"]),
-    "ejercicio_fallo_htc": dict(tipo="txt", sin=["ejercicio del ultimo fallo", "ejercicio fallo htc", "ultimo ejercicio auditado"]),
-    "señales_control": dict(tipo="int", sin=["senales de control", "senales"]),
-    "cargos_htc_monto": dict(tipo="num", sin=["cargos htc", "cargos patrimoniales", "monto de cargos"]),
-    "multas_htc_monto": dict(tipo="num", sin=["multas htc", "multas", "monto de multas"]),
-    "presupuesto_total": dict(tipo="num", sin=["presupuesto total", "presupuesto municipal total"]),
-    "presupuesto_anio": dict(tipo="txt", sin=["anio del presupuesto", "ejercicio del presupuesto", "anio fiscal"]),
-    "gasto_por_habitante": dict(tipo="num", sin=["gasto por habitante"]),
-    "gasto_periodo": dict(tipo="txt", sin=["periodo del gasto"]),
-    "empleados_municipales": dict(tipo="int", sin=["empleados municipales", "empleados ocupados", "personal ocupado"]),
-    "tipo_dato_empleo": dict(tipo="txt", sin=["tipo de dato de empleo"]),
-    "empleo_periodo": dict(tipo="txt", sin=["periodo del empleo", "periodo de empleo"]),
-}
-CAMPO_FECHA_PORTAL = ("fecha_actualizacion_portal", ["fecha de actualizacion", "actualizado", "ultima actualizacion"])
-
-# Campos de 04 que se replican en 01 (misma columna).
-CAMPOS_EN_01 = [
-    "indice_global", "ranking_provincial", "transparencia_puntaje", "transparencia_semaforo",
-    "servicios_seguridad_puntaje", "seguridad_puntaje", "control_puntaje",
-]
-
-_INDICE_ETIQUETAS: dict[str, str] = {}
-for _campo, _d in CAMPOS_PORTAL.items():
-    for _s in _d["sin"]:
-        _INDICE_ETIQUETAS.setdefault(C.normalizar_texto(_s), _campo)
-
+from parser_ficha import (  # noqa: E402  (parser de fichas: campos, reglas y análisis)
+    CAMPOS_EN_01, CAMPOS_FICHA_01, CAMPOS_PORTAL, CAMPO_FECHA_PORTAL, analizar_ficha, estructura_texto,
+    etiquetas_no_reconocidas, interpretar_pagina, parse_fecha,
+)
 
 # ------------------------------------------------------------------ cliente
 def url_segura(url: str) -> str:
@@ -285,134 +237,6 @@ def encontrar_pagina_municipio(enlaces: list[tuple[str, str]], nombre: str) -> t
     return None, "enlaces ambiguos: " + " | ".join(candidatos)
 
 
-def _aplanar_json(o, clave: str = "") -> list[tuple[str, str]]:
-    """Pares (clave de hoja, valor escalar) de un JSON; camelCase/snake_case -> palabras."""
-    res: list[tuple[str, str]] = []
-    if isinstance(o, dict):
-        for k, v in o.items():
-            res += _aplanar_json(v, str(k))
-    elif isinstance(o, list):
-        for v in o[:200]:
-            res += _aplanar_json(v, clave)
-    elif isinstance(o, (str, int, float, bool)) and clave and not isinstance(o, bool):
-        res.append((re.sub(r"([a-z])([A-Z])", r"\1 \2", clave).replace("_", " "), str(o)))
-    return res
-
-
-def etiquetas_no_reconocidas(html: str, maximo: int = 15) -> list[str]:
-    """Etiquetas de la ficha que no coinciden con ningún sinónimo (ayuda a ajustar CAMPOS_PORTAL)."""
-    vistas: list[str] = []
-    for et, _ in extraer_pares(html):
-        n = C.normalizar_texto(et)
-        if n and n not in _INDICE_ETIQUETAS and n not in {C.normalizar_texto(x) for x in CAMPO_FECHA_PORTAL[1]} \
-                and et[:40] not in vistas and len(et) <= 60:
-            vistas.append(et[:40])
-    return vistas[:maximo]
-
-
-def extraer_pares(html: str) -> list[tuple[str, str]]:
-    """Pares (etiqueta, valor) desde tablas, listas de definición y 'Etiqueta: valor'."""
-    soup = BeautifulSoup(html, "lxml")
-    pares: list[tuple[str, str]] = []
-    for sc in soup.find_all("script"):  # datos estructurados embebidos (solo se parsean como JSON)
-        if (sc.get("type") or "").lower() in ("application/json", "application/ld+json") or sc.get("id") == "__NEXT_DATA__":
-            try:
-                pares += _aplanar_json(json.loads(sc.string or ""))
-            except (ValueError, TypeError):
-                pass
-    for t in soup(["script", "style", "noscript"]):
-        t.decompose()
-    for tr in soup.find_all("tr"):
-        celdas = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
-        if len(celdas) >= 2 and celdas[0] and celdas[1]:
-            pares.append((celdas[0], celdas[1]))
-    for dt in soup.find_all("dt"):
-        dd = dt.find_next_sibling("dd")
-        if dd:
-            pares.append((dt.get_text(" ", strip=True), dd.get_text(" ", strip=True)))
-    for el in soup.find_all(["li", "p", "div", "span"]):
-        if el.find(["li", "p", "div", "table"]):
-            continue  # solo elementos hoja
-        txt = el.get_text(" ", strip=True)
-        if ":" in txt and len(txt) < 200:
-            k, _, v = txt.partition(":")
-            if k.strip() and v.strip():
-                pares.append((k.strip(), v.strip()))
-    return pares
-
-
-def _semaforo(v: str) -> str | None:
-    n = C.normalizar_texto(v)
-    for k, out in (("verde", "VERDE"), ("amarillo", "AMARILLO"), ("rojo", "ROJO")):
-        if re.search(rf"\b{k}\b", n):
-            return out
-    return None
-
-
-def _bool(v: str) -> str | None:
-    n = C.normalizar_texto(v)
-    if n in ("si", "publicado", "publica", "true"):
-        return "SI"
-    if n in ("no", "no publicado", "no publica", "false"):
-        return "NO"
-    return None
-
-
-_MESES = {m: i for i, m in enumerate(
-    ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
-     "septiembre", "octubre", "noviembre", "diciembre"], 1)}
-
-
-def parse_fecha(v: str) -> str | None:
-    v = v.strip()
-    if m := re.search(r"(\d{4})-(\d{2})-(\d{2})", v):
-        return m.group(0)
-    if m := re.search(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", v):
-        return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
-    n = C.normalizar_texto(v)
-    if m := re.search(r"(\d{1,2}) de (\w+) de (\d{4})", n):
-        if m.group(2) in _MESES:
-            return f"{m.group(3)}-{_MESES[m.group(2)]:02d}-{int(m.group(1)):02d}"
-    return None
-
-
-def convertir(tipo: str, valor: str):
-    """Valor de texto -> valor normalizado, o None si no es interpretable."""
-    if tipo == "num":
-        return C.parse_num(re.sub(r"[^\d,.\-+]", "", valor.split("/")[0])) if re.search(r"\d", valor) else None
-    if tipo == "int":
-        m = re.search(r"\d[\d.]*", valor)
-        n = C.parse_num(m.group(0)) if m else None
-        return int(n) if n is not None else None
-    if tipo == "semaforo":
-        return _semaforo(valor)
-    if tipo == "bool":
-        return _bool(valor)
-    return valor.strip() or None
-
-
-def interpretar_pagina(html: str) -> tuple[dict[str, dict], list[dict]]:
-    """Devuelve ({campo: {valor, original, etiqueta}}, contradicciones)."""
-    hallados: dict[str, dict] = {}
-    contradicciones: list[dict] = []
-    fecha_et = {C.normalizar_texto(s) for s in CAMPO_FECHA_PORTAL[1]}
-    for etiqueta, valor in extraer_pares(html):
-        n = C.normalizar_texto(etiqueta)
-        if n in fecha_et:
-            campo, val = CAMPO_FECHA_PORTAL[0], parse_fecha(valor)
-        else:
-            campo = _INDICE_ETIQUETAS.get(n)
-            val = convertir(CAMPOS_PORTAL[campo]["tipo"], valor) if campo else None
-        if not campo or val is None:
-            continue
-        if campo in hallados:
-            if hallados[campo]["valor"] != val:
-                contradicciones.append({"campo": campo, "a": hallados[campo]["original"], "b": valor})
-            continue
-        hallados[campo] = {"valor": val, "original": valor.strip(), "etiqueta": etiqueta.strip()}
-    return hallados, contradicciones
-
-
 def verificar_metodologia(html: str) -> dict:
     """Busca en el texto publicado las ponderaciones y el tope esperados (spec sec. 6)."""
     t = C.normalizar_texto(BeautifulSoup(html, "lxml").get_text(" ", strip=True))
@@ -486,7 +310,7 @@ def _inc_respuesta(mid, r: Respuesta, fecha, snap, campo="pagina_municipio"):
                        url_segura(r.url), url_segura(r.url_final or ""))
 
 
-def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, snap: str) -> dict:
+def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, snap: str, dir_diag: Path | None = None) -> dict:
     """Prioridad: URL configurada. El descubrimiento por portada es respaldo (si no hay URL o da 404/410)."""
     mid, nombre = cfg["municipio_id"], cfg["municipio"]
     out = {"indicadores": None, "municipio": None, "fuentes": [], "incidencias": [], "estado": "SIN_DATOS",
@@ -528,36 +352,62 @@ def procesar_municipio(cli: Cliente, cfg: dict, desc: Descubridor, fecha: str, s
         return out
     url = url_segura(r.url_final or url)
 
-    hallados, contradicciones = interpretar_pagina(r.texto)
+    if dir_diag is not None:
+        volcar_diagnostico(dir_diag, mid, r.texto)
+    an = analizar_ficha(r.texto)
+    hallados, contradicciones = an["hallados"], an["contradicciones"]
     fila04 = {"municipio_id": mid, "snapshot_id": snap, "fecha_extraccion": fecha, "url_fuente": url}
     for campo, d in hallados.items():
-        fila04[campo] = d["valor"]
+        en_01 = campo in CAMPOS_FICHA_01
+        if en_01:
+            if campo != "seccion_electoral" or not fila01.get("seccion_electoral"):
+                fila01[campo] = d["valor"]
+        else:
+            fila04[campo] = d["valor"]
+        obs = f"etiqueta='{d['etiqueta']}'; seccion='{d['seccion']}'; html_sha256={r.sha256[:16]}"
+        if en_01 and campo != "poblacion_2022" and campo != "seccion_electoral":
+            obs += "; dato político tomado del portal, pendiente de verificación en fuente oficial"
+        if d.get("obs"):
+            obs += "; " + d["obs"]
         out["fuentes"].append(_fuente(
-            mid, "indicador_portal", campo, d["original"], url, fecha, snap, "html_etiqueta_valor", "MEDIO",
-            obs=f"etiqueta='{d['etiqueta']}'; html_sha256={r.sha256[:16]}"))
+            mid, "municipio_portal" if en_01 else "indicador_portal", campo, d["original"], url, fecha, snap,
+            "html_secciones_etiqueta_valor", d.get("confianza", "MEDIO"), obs=obs))
     for c in contradicciones:
         out["incidencias"].append(_incidencia(
             mid, c["campo"], "CONTRADICCION_INTERNA",
-            f"Valores distintos en la misma página: '{c['a']}' vs '{c['b']}'. Se conservó el primero.",
-            url, fecha, snap, "MEDIO", "Revisar manualmente la página.", c["a"], c["b"]))
+            f"Valores distintos en la misma página: '{c['a']}' ({c['seccion_a']}) vs '{c['b']}' ({c['seccion_b']}). "
+            "Se conservó el primero.", url, fecha, snap, "MEDIO", "Revisar manualmente la página.", c["a"], c["b"]))
     for campo in CAMPOS_EN_01:
         if campo in fila04:
             fila01[campo] = fila04[campo]
     faltan = [c for c in CAMPOS_PORTAL if c not in hallados]
+    faltan_01 = [c for c in CAMPOS_FICHA_01 if c not in hallados and c != "coalicion_actual"]
     n_hallados = len([c for c in hallados if c != "fecha_actualizacion_portal"])
     out["campos"] = n_hallados
-    if faltan:
+    if faltan or faltan_01:
+        def lista(xs, m):
+            return "; ".join(xs[:m]) + (f"; ... (+{len(xs) - m})" if len(xs) > m else "") or "ninguna"
         out["incidencias"].append(_incidencia(
-            mid, ";".join(faltan), "DATOS_NO_ENCONTRADOS",
-            f"{len(faltan)} de {len(CAMPOS_PORTAL)} campos del portal no figuran en la página (quedan en blanco). "
-            f"Faltantes: {', '.join(faltan)}. Etiquetas no reconocidas en la ficha: "
-            f"{'; '.join(etiquetas_no_reconocidas(r.texto)) or 'ninguna'}.",
+            mid, ";".join(faltan + faltan_01), "DATOS_NO_ENCONTRADOS",
+            f"Indicadores sin dato: {len(faltan)} de {len(CAMPOS_PORTAL)} ({', '.join(faltan)}). "
+            f"Ficha (01) sin dato: {', '.join(faltan_01) or 'ninguno'}. "
+            f"Secciones vistas: {lista(an['secciones'], 12)}. "
+            f"Etiquetas no reconocidas [sección > etiqueta = valor]: {lista(an['no_reconocidas'], 25)}. "
+            f"Valores rechazados: {lista(an['rechazados'], 15)}.",
             url, fecha, snap, "BAJO" if n_hallados else "ALTO",
-            "Verificar si el portal los publica con otra etiqueta; ajustar sinónimos en CAMPOS_PORTAL.", url))
-    if n_hallados:
+            "Ajustar reglas en scripts/parser_ficha.py usando la captura diagnostico/ de la ejecución.", url))
+    if any(c in fila04 for c in CAMPOS_PORTAL) or "fecha_actualizacion_portal" in fila04:
         out["indicadores"] = fila04
-        out["estado"] = "PARCIAL" if faltan else "COMPLETO"
+    if n_hallados:
+        out["estado"] = "PARCIAL" if (faltan or faltan_01) else "COMPLETO"
     return out
+
+
+def volcar_diagnostico(dir_diag: Path, mid: str, html: str) -> None:
+    """Captura para depurar el parser: HTML público (acotado) y su estructura por secciones."""
+    dir_diag.mkdir(parents=True, exist_ok=True)
+    (dir_diag / f"{mid}.html").write_text(html[:1_500_000], encoding="utf-8")
+    (dir_diag / f"{mid}_estructura.txt").write_text(estructura_texto(html), encoding="utf-8")
 
 
 def seleccionar(cfg_all: list[dict], pedido: str) -> list[dict]:
@@ -575,7 +425,8 @@ def seleccionar(cfg_all: list[dict], pedido: str) -> list[dict]:
 
 
 def ejecutar(municipios: str, fecha: str | None = None, pausa: float = 2.0, cliente: Cliente | None = None,
-             dir_actual: Path | None = None, dir_historico: Path | None = None, cfg_path: Path | None = None) -> dict:
+             dir_actual: Path | None = None, dir_historico: Path | None = None, cfg_path: Path | None = None,
+             dir_diagnostico: Path | None = None) -> dict:
     import normalizar as N
     ahora = C.ahora_utc()
     fecha = fecha or ahora.strftime("%Y-%m-%d")
@@ -607,7 +458,7 @@ def ejecutar(municipios: str, fecha: str | None = None, pausa: float = 2.0, clie
         incid_extra.append(_inc_respuesta("GLOBAL", rm, fecha, snap, "metodologia"))
 
     # 3) Municipios.
-    resultados = [procesar_municipio(cli, c, desc, fecha, snap) for c in sel]
+    resultados = [procesar_municipio(cli, c, desc, fecha, snap, dir_diagnostico) for c in sel]
     resumen = N.aplicar(resultados, fuentes_extra, incid_extra, fecha, snap,
                         ids_procesados=[c["municipio_id"] for c in sel],
                         dir_actual=dir_actual or C.DIR_ACTUAL, dir_historico=dir_historico or C.DIR_HISTORICO)
@@ -653,11 +504,12 @@ def main(argv=None) -> int:
     ap.add_argument("--fecha", default=None, help="AAAA-MM-DD (por defecto, hoy UTC)")
     ap.add_argument("--pausa", type=float, default=2.0, help="segundos mínimos entre solicitudes")
     ap.add_argument("--informe-ejecucion", type=Path, default=None, help="escribe el informe de la ejecución en Markdown")
+    ap.add_argument("--diagnostico", type=Path, default=None, help="carpeta donde guardar el HTML y la estructura de cada ficha leída")
     ap.add_argument("--registrar-bloqueo", metavar="DETALLE", default=None,
                     help="no consulta la red: registra incidencias de acceso bloqueado con este detalle")
     a = ap.parse_args(argv)
     cli = ClienteBloqueado(a.registrar_bloqueo) if a.registrar_bloqueo else None
-    res = ejecutar(a.municipios, a.fecha, a.pausa, cliente=cli)
+    res = ejecutar(a.municipios, a.fecha, a.pausa, cliente=cli, dir_diagnostico=a.diagnostico)
     print(json.dumps(res, ensure_ascii=False, indent=2))
     if a.informe_ejecucion:
         a.informe_ejecucion.write_text(informe_ejecucion(res), encoding="utf-8")

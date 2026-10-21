@@ -14,9 +14,13 @@
 7. El informe de ejecución (`--informe-ejecucion`) separa solicitudes exitosas, respuestas bloqueadas, páginas ausentes, otros errores y municipios con datos extraídos.
 8. Solo se lee texto; scripts y contenido de la página nunca se ejecutan ni se interpretan como instrucciones.
 
-## Interpretación
-Pares etiqueta→valor desde tablas, listas de definición, líneas `Etiqueta: valor` y JSON embebido (`__NEXT_DATA__`, `application/json`, solo parseado); la etiqueta normalizada (sin tildes) debe **coincidir exactamente** con un sinónimo de `CAMPOS_PORTAL`. Valores originales conservados en `05` (`valor_obtenido`); el índice nunca se recalcula. Etiquetas repetidas con valores distintos => incidencia `CONTRADICCION_INTERNA` (se conserva el primero).
-Los sinónimos son supuestos a ajustar con la ficha real: cuando faltan campos, la incidencia `DATOS_NO_ENCONTRADOS` lista las etiquetas no reconocidas de la ficha.
+## Interpretación de la ficha (`scripts/parser_ficha.py`)
+1. La página se convierte en fragmentos de texto en orden de documento, con su sección (`<h1>-<h6>` o títulos conocidos: *Datos clave*, *Cómo se compone su índice*, *Control*, *Intendente*) y el JSON embebido (solo se parsea).
+2. Etiquetas por reglas: igualdad o palabras contenidas (sin tildes), prefiriendo la sección; p. ej. `servicios`+`seguridad` ≠ `seguridad`; `relevamiento propio`/`transparencia activa` ≠ `transparencia` (pilar) ≠ `ASAP`.
+3. Valor: tras `:` en el mismo fragmento, en los fragmentos siguientes o, en tarjetas "valor, etiqueta", antes (la orientación se decide por votación entre etiquetas sin ambigüedad). Cada valor se usa una vez.
+4. Se rechazan y se informan: porcentajes en puntajes (pesos del pilar), puntajes sobre otra escala (`25 / 50`), valores fuera de 0-100, población sin "2022"/"censo" visible, fechas incompletas.
+5. Intendente/partido/frente/asunción/población/sección van a 01 con trazabilidad en 05 (nivel `MEDIO`; `BAJO` si el nombre se infiere por posición). Son datos del portal y quedan **pendientes de verificación oficial**; nombre y apellido no se separan y la coalición no se completa.
+6. `DATOS_NO_ENCONTRADOS` lista faltantes, secciones vistas, etiquetas no reconocidas (`sección > etiqueta = valor`) y valores rechazados. Con `--diagnostico DIR` se guardan el HTML público y un volcado de estructura (artefacto `monitor-amba-datos`, carpeta `diagnostico/`; no se commitea).
 
 ## Trazabilidad y confianza
 Cada valor de 04 tiene fila en 05 (fuente, URL, fecha de consulta, método, SHA-256 parcial del HTML). Portal agregador => `MEDIO`.
