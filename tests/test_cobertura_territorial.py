@@ -214,5 +214,5 @@ def test_informe_separa_canales_especificos_de_generales(dirs):
 
 def test_workflow_sigue_manual_sin_commits_en_main_ni_cambios_de_config():
     wf = (AQUI.parent / ".github" / "workflows" / "relevar_contactos.yml").read_text(encoding="utf-8")
-    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados]" in wf and "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
+    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados, discrepancias]" in wf and "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
     assert "scripts/extraer.py" not in wf
