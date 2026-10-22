@@ -37,6 +37,9 @@ def seleccionar(cfg_all: list[dict], pedido: str) -> list[dict]:
     """'intermedia' = muestra de 8; 'todos' = los 40; o una lista de ids/nombres separados por coma."""
     if pedido.strip().lower() == "intermedia":
         return [c for c in cfg_all if c["municipio_id"] in MUESTRA_INTERMEDIA]
+    if pedido.strip().lower() == "discrepancias":     # solo los municipios con discrepancias/faltantes automatizables del insumo preliminar
+        ids = {r["municipio_id"] for r in C.leer_csv(C.ARCHIVO_DISCREPANCIAS) if r["proceso"] == "ACTIONS" and r["tema"] != "SIN_PROTOCOLO_DIRECTO"}
+        return [c for c in cfg_all if c["municipio_id"] in ids]
     if pedido.strip().lower() in ("candidatos", "pendientes", "documentados"):       # solo verificación/identificación de sitios
         estado = {"candidatos": "CANDIDATO_A_VERIFICAR", "pendientes": "SIN_CONFIGURAR", "documentados": "OFICIAL_DOCUMENTADO"}[pedido.strip().lower()]
         ids = {m for m, s in cargar_sitios().items() if s.get("estado") == estado}

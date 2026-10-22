@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: "prueba = municipios indicados; intermedia = muestra de 8; completo = los 40; candidatos = los de sitio sin comprobar; pendientes = los sin sitio; documentados = sitios de fuente oficial a comprobar por HTTP"
+        description: "prueba = municipios indicados; intermedia = muestra de 8; completo = los 40; candidatos = los de sitio sin comprobar; pendientes = los sin sitio; documentados = sitios de fuente oficial a comprobar por HTTP; discrepancias = solo municipios con discrepancias/faltantes automatizables del insumo preliminar (verifica además los pares de dominio)"
         type: choice
-        options: [prueba, intermedia, completo, candidatos, pendientes, documentados]
+        options: [prueba, intermedia, completo, candidatos, pendientes, documentados, discrepancias]
         default: prueba
       solo_sitios:
         description: "Solo verificar/descubrir sitios oficiales (no relevar contactos). Pensado para modo candidatos o pendientes."
@@ -56,9 +56,14 @@ jobs:
 
       - name: Selección de municipios
         run: |
-          case "$MODO" in completo) SEL="todos";; intermedia) SEL="intermedia";; candidatos) SEL="candidatos";; pendientes) SEL="pendientes";; documentados) SEL="documentados";; *) SEL="$MUNICIPIOS";; esac
+          case "$MODO" in completo) SEL="todos";; intermedia) SEL="intermedia";; candidatos) SEL="candidatos";; pendientes) SEL="pendientes";; documentados) SEL="documentados";; discrepancias) SEL="discrepancias";; *) SEL="$MUNICIPIOS";; esac
           if ! printf '%s' "$SEL" | grep -Eq '^[A-Za-z0-9_ áéíóúÁÉÍÓÚñÑ,.]+$'; then echo "Selección inválida"; exit 1; fi
           echo "SEL=$SEL" >> "$GITHUB_ENV"
+
+      - name: Verificar pares de dominios discrepantes (config vs insumo; no modifica la config)
+        if: ${{ inputs.modo == 'discrepancias' }}
+        timeout-minutes: 15
+        run: python scripts/verificar_pares_dominio.py --salida diagnostico_contactos --plazo-total 600
 
       - name: Descubrir y verificar sitios oficiales (enlaces de las fichas; sin deducir dominios; no commitea)
         if: ${{ inputs.descubrir_sitios }}

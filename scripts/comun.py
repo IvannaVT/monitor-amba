@@ -23,6 +23,7 @@ ARCHIVO_NOMBRES = DIR_CONFIG / "intendentes_nombres.csv"
 ARCHIVO_SITIOS = DIR_CONFIG / "sitios_oficiales.csv"
 ARCHIVO_VERIFICADOS = DIR_CONFIG / "contactos_verificados.csv"
 ARCHIVO_HOMONIMOS = DIR_CONFIG / "dominios_homonimos.csv"
+ARCHIVO_DISCREPANCIAS = RAIZ / "data" / "insumos" / "ejecutivo_preliminar" / "discrepancias.csv"
 
 F_MUNICIPIOS = "01_amba_municipios.csv"
 F_BLOQUES = "02_amba_concejos_bloques.csv"

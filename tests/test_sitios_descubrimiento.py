@@ -202,7 +202,7 @@ def test_intendencia_es_despacho_y_el_orden_de_prioridad():
 # ------------------------------------------------------------------ workflow: nada sin auditar llega a main
 def test_workflow_intermedia_completo_y_sin_escritura_en_main():
     wf = (AQUI.parent / ".github" / "workflows" / "relevar_contactos.yml").read_text(encoding="utf-8")
-    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados]" in wf and "scripts/descubrir_sitios.py" in wf and "--aplicar" in wf
+    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados, discrepancias]" in wf and "scripts/descubrir_sitios.py" in wf and "--aplicar" in wf
     assert "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
     assert "default: false" in wf.split("confirmar_cambios:")[1][:300]
     assert "git add data docs/informe_contactos.md" in wf and "config/" not in wf.split("git add")[1].split("\n")[0]
