@@ -156,13 +156,13 @@ def test_estados_de_vigencia(dirs):
     correr(dirs, sitio_ok())
     f = filas(dirs)
     assert f["Ceremonial y Protocolo"]["estado_contacto"] == "PUBLICADO_SIN_VIGENCIA_CONFIRMADA"   # una sola página
-    assert f["Contacto institucional general"]["estado_contacto"] == "VIGENTE_CONFIRMADO"          # mismo correo/teléfono en 2+ páginas
-    assert f["Ceremonial y Protocolo"]["fecha_verificacion"] == "2026-10-21"
-    assert f["Despacho del Intendente / Jefatura de Gabinete"]["fecha_verificacion"] == ""
+    assert f["Contacto institucional general"]["estado_contacto"] == "PUBLICADO_CORROBORADO"      # mismo correo/teléfono en 2+ páginas (no prueba que funcione)
+    assert all(r["fecha_verificacion"] == "" for r in f.values())                                  # solo una persona puede confirmar la vigencia
+    assert all(r["estado_contacto"] != "VIGENTE_CONFIRMADO" for r in f.values())
     fechada = AUTORIDADES.replace("</main>", "<p>Actualizado al 2026-09-30</p></main>")
     d2 = (dirs[0].parent / "a2", dirs[0].parent / "h2")
     correr(d2, sitio_ok(**{SITIO + "/autoridades/": R(text=fechada)}))
-    assert filas(d2)["Ceremonial y Protocolo"]["estado_contacto"] == "VIGENTE_CONFIRMADO"            # página con fecha reciente visible
+    assert filas(d2)["Ceremonial y Protocolo"]["estado_contacto"] == "PUBLICADO_CORROBORADO"         # página con fecha reciente visible
 
 
 def test_trazabilidad_incidencias_y_validacion(dirs):
