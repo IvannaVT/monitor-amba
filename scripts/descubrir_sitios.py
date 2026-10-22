@@ -14,7 +14,9 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import signal
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -26,6 +28,9 @@ import extraer as E  # noqa: E402
 import normalizar as N  # noqa: E402
 
 ESTADO_OK = "VERIFICADO_TECNICAMENTE"
+# Presupuestos por defecto (segundos / solicitudes). Ningún municipio ni la ejecución completa pueden quedar bloqueados.
+PLAZO_MUNICIPIO, PLAZO_TOTAL, MAX_SOLICITUDES_MUNICIPIO = 90.0, 1200.0, 14
+ERRORES_PRESUPUESTO = ("PLAZO_TOTAL_AGOTADO", "TIMEOUT_MUNICIPIO", "LIMITE_SOLICITUDES_MUNICIPIO")
 _CONTENEDORES = ("li", "p", "tr", "dd", "div", "td")
 
 
@@ -102,10 +107,56 @@ def verificar_raiz(cli, raiz: str, nombre: str, exigir_nombre: bool = True, exig
     return res
 
 
-def descubrir(cli, cfg_all: list[dict], sitios: dict[str, dict], seleccion: list[dict]) -> list[dict]:
-    resultados = []
-    dueno = {base_de(urlparse(s["sitio_oficial"]).hostname): m for m, s in sitios.items() if s.get("sitio_oficial")}   # dominio -> municipio
-    for cfg in seleccion:
+def descubrir(cli, cfg_all: list[dict], sitios: dict[str, dict], seleccion: list[dict], resultados: list[dict] | None = None,
+              plazo_municipio: float | None = PLAZO_MUNICIPIO, plazo_total: float | None = PLAZO_TOTAL,
+              max_solicitudes: int | None = MAX_SOLICITUDES_MUNICIPIO, al_terminar=None, log=print) -> list[dict]:
+    """`resultados` (lista del llamador) se va llenando municipio a municipio: si la ejecución se corta, lo hecho se conserva."""
+    resultados = [] if resultados is None else resultados
+    if plazo_total and hasattr(cli, "fin_global"):
+        cli.fin_global = time.monotonic() + plazo_total
+    dueno = {base_de(urlparse(x["sitio_oficial"]).hostname): m for m, x in sitios.items() if x.get("sitio_oficial")}   # dominio -> municipio
+    t0, total = time.monotonic(), len(seleccion)
+    for i, cfg in enumerate(seleccion, 1):
+        n_antes = len(resultados)
+        agotado = cli.presupuesto_agotado() if hasattr(cli, "presupuesto_agotado") else ""
+        if agotado == "PLAZO_TOTAL_AGOTADO":     # el resto queda registrado como no procesado, sin tocar la red
+            for c in seleccion[i - 1:]:
+                resultados.append(_fila(c, estado="NO_PROCESADO_PLAZO_TOTAL", detalle=f"plazo total de {plazo_total:g} s agotado antes de procesarlo"))
+                if al_terminar:
+                    al_terminar(resultados)
+            log(f"[{i}/{total}] plazo total agotado: {total - i + 1} municipio(s) sin procesar", flush=True)
+            break
+        if hasattr(cli, "iniciar_municipio"):
+            cli.iniciar_municipio(plazo_municipio, max_solicitudes)
+        t1, n1 = time.monotonic(), getattr(cli, "n_solicitudes", 0)
+        log(f"[{i}/{total}] {cfg['municipio']}: inicio", flush=True)
+        try:
+            _descubrir_uno(cli, cfg, sitios, resultados, dueno)
+        except Exception as exc:  # noqa: BLE001 - un municipio con error inesperado no frena a los demás
+            _cerrar(resultados, cfg, n_antes, "ERROR_INESPERADO", f"{type(exc).__name__}: {str(exc)[:150]}")
+        fila = resultados[-1]
+        if fila["estado"] in ERRORES_PRESUPUESTO or (fila["estado"] not in (ESTADO_OK, "YA_CONFIGURADO") and any(e in (fila["detalle"] or "") for e in ERRORES_PRESUPUESTO)):
+            fila["detalle"] = f"{fila['estado']}; {fila['detalle']}"[:300]
+        log(f"[{i}/{total}] {cfg['municipio']}: {fila['estado']} · {getattr(cli, 'n_solicitudes', 0) - n1} solicitudes · "
+            f"{time.monotonic() - t1:.1f} s · acumulado {time.monotonic() - t0:.0f} s", flush=True)
+        if al_terminar:
+            al_terminar(resultados)
+    return resultados
+
+
+def _fila(cfg: dict, **kw) -> dict:
+    return {"municipio_id": cfg["municipio_id"], "municipio": cfg["municipio"], "estado": "", "sitio": "", "http": None, "titulo": "",
+            "enlace_documento": "", "ficha": cfg.get("url_portal_municipio", ""), "detalle": "", **kw}
+
+
+def _cerrar(resultados: list[dict], cfg: dict, n_antes: int, estado: str, detalle: str) -> None:
+    """Deja exactamente una fila para el municipio, con el estado dado."""
+    del resultados[n_antes:]
+    resultados.append(_fila(cfg, estado=estado, detalle=detalle))
+
+
+def _descubrir_uno(cli, cfg: dict, sitios: dict[str, dict], resultados: list[dict], dueno: dict[str, str]) -> None:
+    for cfg in (cfg,):
         mid, nombre = cfg["municipio_id"], cfg["municipio"]
         fila = {"municipio_id": mid, "municipio": nombre, "estado": "", "sitio": "", "http": None, "titulo": "", "enlace_documento": "",
                 "ficha": cfg.get("url_portal_municipio", ""), "detalle": ""}
@@ -220,24 +271,50 @@ def registrar_incidencias(resultados: list[dict], dir_actual: Path | None = None
     N.escribir_con_historial(C.F_INCIDENCIAS, resto + N.fusionar_incidencias(propias, nuevas, ids, fecha), dir_actual, dir_hist, fecha)
 
 
+def _guardar_parcial(res: list[dict], salida: Path) -> None:
+    """Informe y avance escritos tras cada municipio: si el proceso se corta, queda lo ya resuelto."""
+    salida.mkdir(parents=True, exist_ok=True)
+    tmp = salida / "cobertura_sitios.md.tmp"
+    tmp.write_text(informe_cobertura(C.leer_csv(C.ARCHIVO_SITIOS), res), encoding="utf-8")
+    tmp.replace(salida / "cobertura_sitios.md")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--municipios", default="intermedia")
     ap.add_argument("--salida", type=Path, default=Path("diagnostico_contactos"))
     ap.add_argument("--pausa", type=float, default=2.0)
     ap.add_argument("--aplicar", action="store_true", help="completa config/sitios_oficiales.csv (solo filas SIN_CONFIGURAR)")
+    ap.add_argument("--plazo-solicitud", type=float, default=K.PLAZO_SOLICITUD, help="segundos máximos por solicitud (total)")
+    ap.add_argument("--plazo-municipio", type=float, default=PLAZO_MUNICIPIO, help="segundos máximos por municipio")
+    ap.add_argument("--plazo-total", type=float, default=PLAZO_TOTAL, help="segundos máximos de toda la ejecución")
+    ap.add_argument("--max-solicitudes", type=int, default=MAX_SOLICITUDES_MUNICIPIO, help="solicitudes máximas por municipio (incluye robots.txt)")
     a = ap.parse_args(argv)
+
+    def cortar(signum, _frame):      # cancelación de Actions (SIGTERM/SIGINT): se conserva lo ya hecho
+        raise KeyboardInterrupt(f"señal {signum}")
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, cortar)
     cfg_all = C.cargar_municipios_cfg()
     sitios = K.cargar_sitios()
-    cli = K.ClienteContactos(pausa=a.pausa)
-    res = descubrir(cli, cfg_all, sitios, K.seleccionar(cfg_all, a.municipios))
-    if a.aplicar:
-        print(f"Config actualizada: {aplicar_config(res, C.ARCHIVO_SITIOS)} sitios")
-    registrar_incidencias(res)
-    a.salida.mkdir(parents=True, exist_ok=True)
-    md = informe_cobertura(C.leer_csv(C.ARCHIVO_SITIOS), res)
-    (a.salida / "cobertura_sitios.md").write_text(md, encoding="utf-8")
-    print(md)
+    cli = K.ClienteContactos(pausa=a.pausa, plazo_solicitud=a.plazo_solicitud)
+    seleccion = K.seleccionar(cfg_all, a.municipios)
+    res: list[dict] = []
+    interrumpido = ""
+    try:
+        descubrir(cli, cfg_all, sitios, seleccion, res, a.plazo_municipio, a.plazo_total, a.max_solicitudes,
+                  al_terminar=lambda r: _guardar_parcial(r, a.salida))
+    except KeyboardInterrupt as exc:
+        interrumpido = str(exc) or "interrumpido"
+        hechos = {r["municipio_id"] for r in res}
+        res.extend(_fila(c, estado="NO_PROCESADO_INTERRUMPIDO", detalle=f"ejecución interrumpida ({interrumpido})") for c in seleccion if c["municipio_id"] not in hechos)
+        print(f"INTERRUMPIDO ({interrumpido}): se conservan {len(hechos)} resultados", flush=True)
+    finally:
+        if a.aplicar:
+            print(f"Config actualizada: {aplicar_config(res, C.ARCHIVO_SITIOS)} sitios", flush=True)
+        registrar_incidencias(res)
+        _guardar_parcial(res, a.salida)
+    print(informe_cobertura(C.leer_csv(C.ARCHIVO_SITIOS), res))
     return 0
 
 

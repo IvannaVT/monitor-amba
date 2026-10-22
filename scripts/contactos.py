@@ -13,6 +13,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import threading
+import time
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -47,6 +49,10 @@ CAMPOS_CANAL = ["responsable_nombre", "responsable_apellido", "responsable_nombr
 
 REDIRECCIONES = (301, 302, 303, 307, 308)
 MAX_SALTOS = 5
+# Plazos por defecto (segundos). Ninguna operación de red puede superar PLAZO_SOLICITUD, haya o no respuesta parcial.
+PLAZO_CONEXION, PLAZO_LECTURA, PLAZO_SOLICITUD = 8.0, 15.0, 30.0
+MAX_ESPERA_CRAWL = 10.0        # un Crawl-delay mayor se respeta NO consultando el dominio (no se duerme horas)
+MAX_PAGINAS_DOMINIO = 6        # páginas (sin contar robots.txt) por dominio y por municipio
 
 
 def _mismo_dominio(a: str, b: str) -> bool:
@@ -64,6 +70,77 @@ class ClienteContactos(E.Cliente):
     - Cualquier otro destino (p. ej. el mismo nombre en otra provincia) se rechaza con REDIRECCION_EXTERNA sin solicitarlo.
     """
 
+    def __init__(self, *a, plazo_solicitud: float = PLAZO_SOLICITUD, max_espera_crawl: float = MAX_ESPERA_CRAWL,
+                 max_paginas_dominio: int = MAX_PAGINAS_DOMINIO, **kw):
+        super().__init__(*a, **kw)
+        self.plazo_solicitud, self.max_espera_crawl, self.max_paginas_dominio = plazo_solicitud, max_espera_crawl, max_paginas_dominio
+        self.timeout = (min(PLAZO_CONEXION, plazo_solicitud), min(PLAZO_LECTURA, plazo_solicitud))
+        self.fin_global: float | None = None          # instante (time.monotonic) tope de toda la ejecución
+        self.fin_municipio: float | None = None
+        self.max_solicitudes_municipio: int | None = None
+        self._n0, self._paginas = 0, {}
+
+    def iniciar_municipio(self, plazo: float | None = None, max_solicitudes: int | None = None) -> None:
+        self.fin_municipio = time.monotonic() + plazo if plazo else None
+        self.max_solicitudes_municipio, self._n0, self._paginas = max_solicitudes, self.n_solicitudes, {}
+
+    def presupuesto_agotado(self) -> str:
+        """Devuelve '' si se puede seguir, o el tipo de error que corresponde."""
+        ahora = time.monotonic()
+        if self.fin_global is not None and ahora >= self.fin_global:
+            return "PLAZO_TOTAL_AGOTADO"
+        if self.fin_municipio is not None and ahora >= self.fin_municipio:
+            return "TIMEOUT_MUNICIPIO"
+        if self.max_solicitudes_municipio is not None and self.n_solicitudes - self._n0 >= self.max_solicitudes_municipio:
+            return "LIMITE_SOLICITUDES_MUNICIPIO"
+        return ""
+
+    def _plazo_efectivo(self) -> float:
+        topes = [self.plazo_solicitud] + [f - time.monotonic() for f in (self.fin_global, self.fin_municipio) if f is not None]
+        return max(0.1, min(topes))
+
+    def _pedir(self, url: str, allow_redirects: bool):
+        """GET con tope de tiempo TOTAL (conexión + cabeceras + cuerpo), no solo por lectura: corre en un hilo daemon y se abandona al vencer."""
+        caja: dict = {}
+
+        def trabajo():
+            try:
+                caja["r"] = self.s.get(url, timeout=self.timeout, allow_redirects=allow_redirects)   # TLS se verifica
+            except BaseException as exc:  # noqa: BLE001 - se reenvía al hilo principal
+                caja["exc"] = exc
+        h = threading.Thread(target=trabajo, daemon=True)
+        h.start()
+        h.join(self._plazo_efectivo())
+        if h.is_alive():
+            raise requests.exceptions.Timeout(f"sin respuesta completa en {self._plazo_efectivo():.0f} s (tope total por solicitud)")
+        if "exc" in caja:
+            raise caja["exc"]
+        return caja["r"]
+
+    def _robots_de(self, url: str):
+        p = urlparse(url)
+        origen = f"{p.scheme}://{p.netloc}"
+        if origen in self._robots:
+            return self._robots[origen]
+        rp, motivo = None, ""
+        try:
+            self._esperar()
+            self.n_solicitudes += 1
+            r = self._pedir(origen + "/robots.txt", True)
+            if r.status_code == 200:
+                rp = E.robotparser.RobotFileParser()
+                rp.parse(r.text.splitlines())
+            elif r.status_code in (404, 410):
+                rp = E.robotparser.RobotFileParser()
+                rp.parse([])
+            else:
+                motivo = f"robots.txt respondió HTTP {r.status_code}; no verificable"
+        except requests.exceptions.RequestException as exc:
+            tipo, det = self._clasificar(exc)
+            motivo = f"robots.txt inaccesible ({tipo}): {det}"
+        self._robots[origen] = (rp, motivo)
+        return self._robots[origen]
+
     def get(self, url: str, hosts_ok=frozenset()) -> E.Respuesta:
         r = self._get_con_saltos(url, {CP.dominio_base(h) for h in hosts_ok})
         self.eventos.append({"url": E.url_segura(url), "status": r.status, "ok": r.ok, "tipo_error": r.tipo_error})
@@ -72,16 +149,28 @@ class ClienteContactos(E.Cliente):
     def _get_con_saltos(self, url: str, ok: set[str]) -> E.Respuesta:
         saltos, actual = [], url
         for _ in range(MAX_SALTOS + 1):
-            rp, motivo = self._robots_de(actual)
             ctx = dict(url_final=E.url_segura(actual), redirecciones=tuple(saltos))
+            agotado = self.presupuesto_agotado()
+            if agotado:
+                return E.Respuesta(url, False, tipo_error=agotado, detalle="presupuesto de tiempo/solicitudes agotado; no se consulta", **ctx)
+            rp, motivo = self._robots_de(actual)
             if rp is None:
                 return E.Respuesta(url, False, tipo_error="ROBOTS_NO_VERIFICABLE", detalle=motivo, **ctx)
             if not rp.can_fetch(self.ua, actual):
                 return E.Respuesta(url, False, tipo_error="PROHIBIDO_POR_ROBOTS", detalle="robots.txt no permite esta ruta", **ctx)
+            delay = float(rp.crawl_delay(self.ua) or rp.crawl_delay("*") or 0)
+            base = CP.dominio_base(urlparse(actual).hostname or "")
+            if delay > self.max_espera_crawl:
+                return E.Respuesta(url, False, tipo_error="CRAWL_DELAY_EXCESIVO",
+                                   detalle=f"robots.txt pide Crawl-delay de {delay:g} s (> {self.max_espera_crawl:g} s admitidos); se respeta y no se consulta", **ctx)
+            if self._paginas.get(base, 0) >= self.max_paginas_dominio:
+                return E.Respuesta(url, False, tipo_error="LIMITE_PAGINAS_DOMINIO",
+                                   detalle=f"se alcanzó el máximo de {self.max_paginas_dominio} páginas por dominio", **ctx)
             try:
-                self._esperar(float(rp.crawl_delay(self.ua) or rp.crawl_delay("*") or 0))
+                self._esperar(delay)
                 self.n_solicitudes += 1
-                r = self.s.get(actual, timeout=self.timeout, allow_redirects=False)   # TLS se verifica (verify por defecto)
+                self._paginas[base] = self._paginas.get(base, 0) + 1
+                r = self._pedir(actual, False)
             except requests.exceptions.RequestException as exc:
                 tipo, det = self._clasificar(exc)
                 return E.Respuesta(url, False, tipo_error=tipo, detalle=det, **ctx)
