@@ -37,7 +37,7 @@ concurrency:
 jobs:
   contactos:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90        # tope duro del job (antes 120); el descubrimiento tiene además plazos internos
     permissions:
       contents: write   # solo se usa si confirmar_cambios=true
     env:
@@ -62,10 +62,13 @@ jobs:
 
       - name: Descubrir y verificar sitios oficiales (enlaces de las fichas; sin deducir dominios; no commitea)
         if: ${{ inputs.descubrir_sitios }}
-        run: python scripts/descubrir_sitios.py --municipios "$SEL" --aplicar --salida diagnostico_contactos
+        timeout-minutes: 25
+        # tope por solicitud 30 s, por municipio 90 s, total 20 min; al vencer queda el resultado parcial y se sigue
+        run: python scripts/descubrir_sitios.py --municipios "$SEL" --aplicar --salida diagnostico_contactos --plazo-total 1200
 
       - name: Relevar contactos (robots.txt y TLS verificados, pausa de 2 s, solo sitios configurados o verificados)
         if: ${{ !inputs.solo_sitios }}
+        timeout-minutes: 60
         run: python scripts/contactos.py --municipios "$SEL" --informe docs/informe_contactos.md --diagnostico diagnostico_contactos | tee contactos.json
 
       - name: Validar CSV
