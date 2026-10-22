@@ -141,7 +141,7 @@ def _fuente(mid, clave, campo, valor, h, fecha, snap, conf, titulo=""):
 
 
 # ------------------------------------------------------------------ relevamiento de un municipio
-def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_paginas: int = MAX_PAGINAS, dir_diag: Path | None = None) -> dict:
+def _relevar_sitio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_paginas: int = MAX_PAGINAS, dir_diag: Path | None = None) -> dict:
     mid, nombre = cfg["municipio_id"], cfg["municipio"]
     out = dict(municipio_id=mid, municipio=nombre, sitio_ok=False, hallazgos=[], general=[], paginas=[], incidencias=[], fuentes_extra=[])
     url0 = (sitio or {}).get("sitio_oficial", "").strip()
@@ -174,7 +174,7 @@ def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pa
                                        "Corregir config/sitios_oficiales.csv con el dominio oficial del municipio bonaerense."))
         return out
     # CONFIRMADO = una persona verificó que es el sitio oficial de este municipio (p. ej. su título no nombra al municipio).
-    verificado = sitio.get("estado") == "CONFIRMADO" or (C.normalizar_texto(nombre) in C.normalizar_texto(texto_id) and _oficial(host0))
+    verificado = sitio.get("estado") == "CONFIRMADO" or (CP.nombre_en_texto(nombre, texto_id) and _oficial(host0))
     if not verificado:
         out["incidencias"].append(_inc(mid, "sitio_oficial", "SITIO_NO_VERIFICADO",
                                        f"{r.diagnostico()}; no se pudo verificar que sea el sitio oficial de {nombre} "
@@ -234,6 +234,27 @@ def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pa
     return out
 
 
+def relevar_municipio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_paginas: int = MAX_PAGINAS, dir_diag: Path | None = None) -> dict:
+    """Relevamiento del sitio principal; si no se puede (TLS, robots, bloqueo, sitio no verificado), solo entonces se prueban las
+    `fuentes_alternativas` OFICIALES cargadas en la config (otro dominio del municipio, HCD...). Sin eludir TLS, robots ni accesos:
+    cada alternativa pasa las mismas verificaciones y la incidencia del sitio principal se conserva."""
+    out = _relevar_sitio(cli, cfg, sitio, fecha, snap, max_paginas, dir_diag)
+    alts = [u.strip() for u in (sitio or {}).get("fuentes_alternativas", "").split(";") if u.strip()]
+    if out["sitio_ok"] or not alts:
+        return out
+    for alt in alts:
+        if not alt.startswith("https://") or CP.dominio_homonimo(urlparse(alt).hostname or ""):
+            continue
+        o2 = _relevar_sitio(cli, cfg, {**sitio, "sitio_oficial": alt, "estado": "CONFIRMADO", "fuentes_alternativas": ""}, fecha, snap, max_paginas, dir_diag)
+        out["incidencias"] += o2["incidencias"]
+        if o2["sitio_ok"]:
+            for k in ("hallazgos", "general", "paginas"):
+                out[k] += o2[k]
+            out["sitio_ok"], out["fuente_alternativa"] = True, alt
+            break
+    return out
+
+
 # ------------------------------------------------------------------ agregación y filas
 def _agregar(hallazgos: list[dict]) -> dict:
     ag: dict[str, dict] = {}
@@ -287,7 +308,7 @@ def construir_filas(res: dict, fecha: str, snap: str) -> tuple[list[dict], list[
         if clave == "contacto_general" and estado in ("NO_ENCONTRADO", "DEPENDENCIA_SIN_CANAL"):
             incs.append(_inc(mid, clave, "CANAL_NO_ENCONTRADO", "No se halló un contacto general institucional publicado.", res["paginas"][0],
                              fecha, snap, "ALTO", "Revisar manualmente la sección de contacto del sitio oficial."))
-            continue
+            # la fila se emite igual: si antes había un canal, la fusión lo conserva SIN vigencia y registra que dejó de verse
         org = f"Honorable Concejo Deliberante de {nombre}" if d["organismo"] == "HCD" else f"Municipalidad de {nombre}"
         nom, ape, met = C.separar_nombre(a["responsable"]) if a and a["responsable"] else ("", "", "")
         con = estado in ("VIGENTE_CONFIRMADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA")
@@ -437,7 +458,11 @@ def informe_md(filas: list[dict], municipios: list[str], fecha: str) -> str:
     cuenta = {}
     for f in filas:
         cuenta[f["estado_contacto"]] = cuenta.get(f["estado_contacto"], 0) + 1
-    l += ["", "Estados: " + ", ".join(f"{k}={v}" for k, v in sorted(cuenta.items())), "", "— = no relevado (sitio no verificado)."]
+    espec = sum(1 for f in filas if f["tipo_contacto"] != "CONTACTO_ALTERNATIVO" and f["estado_contacto"] in ("VIGENTE_CONFIRMADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA"))
+    alt = sum(1 for f in filas if f["tipo_contacto"] == "CONTACTO_ALTERNATIVO" and f["estado_contacto"] in ("VIGENTE_CONFIRMADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA"))
+    l += ["", "Estados: " + ", ".join(f"{k}={v}" for k, v in sorted(cuenta.items())),
+          f"Canales específicos (protocolo, relaciones, despacho, concejo) con contacto: {espec}; canales generales/alternativos con contacto: {alt}.",
+          f"Responsables publicados: {sum(1 for f in filas if f['responsable_nombre_completo'])}.", "", "— = no relevado (sitio no verificado)."]
     return "\n".join(l) + "\n"
 
 

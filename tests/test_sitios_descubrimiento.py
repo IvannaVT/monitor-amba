@@ -131,7 +131,8 @@ def test_aplicar_solo_completa_sin_configurar_y_conserva_lo_confirmado(tmp_path)
 
 def test_el_repositorio_no_incluye_sitios_no_auditados():
     est = {r["municipio_id"]: r["estado"] for r in C.leer_csv(C.ARCHIVO_SITIOS)}
-    assert sum(1 for e in est.values() if e == "CONFIRMADO") == 3 and sum(1 for e in est.values() if e == "SIN_CONFIGURAR") == 37
+    assert sum(1 for e in est.values() if e == "CONFIRMADO") == 3 and "VERIFICADO_TECNICAMENTE" not in est.values()   # nada sin comprobar figura como verificado
+    assert sum(1 for e in est.values() if e == "CANDIDATO_A_VERIFICAR") + sum(1 for e in est.values() if e == "SIN_CONFIGURAR") == 37
 
 
 def test_validador_exige_fuente_en_los_verificados_tecnicamente(tmp_path, monkeypatch):
@@ -185,7 +186,8 @@ def test_el_respaldo_no_se_usa_si_hay_zona_de_contacto_ni_toma_canales_de_una_de
     sin_zona = '<section><h3>Ceremonial y Protocolo</h3><p>Tel: 4000-0001</p><p>protocolo@tresdefebrero.gov.ar</p></section>'
     d2 = (dirs[0].parent / "a2", dirs[1])
     relevar_real(d2, "ba_tres_de_febrero", {"": f"<html><head><title>Municipio de Tres de Febrero</title></head><body>{sin_zona}</body></html>"})
-    assert "Contacto institucional general" not in filas(d2)       # el canal de Ceremonial no se reutiliza como general
+    g = filas(d2)["Contacto institucional general"]
+    assert g["estado_contacto"] == "NO_ENCONTRADO" and g["email_institucional"] == "" and g["telefono_institucional"] == ""   # el canal de Ceremonial no se reutiliza
 
 
 def test_intendencia_es_despacho_y_el_orden_de_prioridad():
