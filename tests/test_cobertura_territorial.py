@@ -142,8 +142,9 @@ def test_con_tls_en_el_principal_se_usa_la_fuente_oficial_alternativa_y_se_conse
     assert res["sitio_ok"] and res["fuente_alternativa"] == "https://www.hcd-alt-prueba.gob.ar/"
     inc = [i for i in C.leer_csv(dirs[0] / C.F_INCIDENCIAS) if i["campo"] == "contacto:sitio_oficial"]
     assert any(i["tipo_incidencia"] == "ROBOTS_NO_VERIFICABLE" and "ERROR_TLS" in i["descripcion"] and "mda.gob.ar" in i["url_afectada"] for i in inc)
-    g = filas(dirs)["Contacto institucional general"]
+    g = filas(dirs)["Contacto institucional general del Concejo Deliberante"]    # el sitio alternativo es del HCD: no se atribuye a la Municipalidad
     assert g["email_institucional"] == "hcd@alt-prueba.gob.ar" and g["url_fuente"].startswith("https://www.hcd-alt-prueba.gob.ar/")
+    assert filas(dirs)["Contacto institucional general"]["email_institucional"] == ""        # y la Municipalidad no recibe los correos del HCD
     assert ses.pedidos.count("https://www.mda.gob.ar/robots.txt") == 1 and "https://www.mda.gob.ar/" not in ses.pedidos     # el principal no se eluda
 
 
@@ -218,5 +219,5 @@ def test_informe_separa_canales_especificos_de_generales(dirs):
 
 def test_workflow_sigue_manual_sin_commits_en_main_ni_cambios_de_config():
     wf = (AQUI.parent / ".github" / "workflows" / "relevar_contactos.yml").read_text(encoding="utf-8")
-    assert "options: [prueba, intermedia, completo]" in wf and "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
+    assert "options: [prueba, intermedia, completo, candidatos, pendientes]" in wf and "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
     assert "scripts/extraer.py" not in wf

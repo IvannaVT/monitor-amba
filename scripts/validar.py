@@ -187,6 +187,10 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         for d_ in filter(None, (x.strip() for x in (s_.get("dominios_verificados") or "").split(";"))):
             if _CP.dominio_homonimo(d_):
                 err.append(f"{ref}: dominios_verificados incluye el homónimo {d_}")
+    for r_ in C.leer_csv(C.ARCHIVO_VERIFICADOS):   # vigencia confirmada por una persona: debe constar método y fecha
+        if not all((r_.get(k) or "").strip() for k in ("municipio_id", "dependencia", "canal", "fecha_verificacion", "metodo")) or \
+                not RE_FECHA.match(r_.get("fecha_verificacion", "")):
+            err.append(f"config/contactos_verificados.csv: fila incompleta o con fecha inválida ({r_.get('municipio_id')} / {r_.get('canal')})")
     codigos = [m_["indec_codigo"] for m_ in C.cargar_municipios_cfg() if m_.get("indec_codigo")]
     for cod in codigos:
         if not re.fullmatch(r"06\d{3}", cod):
@@ -218,7 +222,9 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         for u_ in (f["url_fuente"], f["sitio_web"]):
             if u_ and not u_.startswith(("http://", "https://")):
                 err.append(f"{ref}: URL no completa '{u_}'")
-        if f["estado_contacto"] in ("VIGENTE_CONFIRMADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA") and not (f["email_institucional"] or f["telefono_institucional"]):
+        if f["fecha_verificacion"] and f["estado_contacto"] != "VIGENTE_CONFIRMADO":
+            err.append(f"{ref}: fecha_verificacion solo corresponde a VIGENTE_CONFIRMADO (verificado por una persona)")
+        if f["estado_contacto"] in ("VIGENTE_CONFIRMADO", "PUBLICADO_CORROBORADO", "PUBLICADO_SIN_VIGENCIA_CONFIRMADA") and not (f["email_institucional"] or f["telefono_institucional"]):
             err.append(f"{ref}: estado '{f['estado_contacto']}' sin ningún canal")
         if f["estado_contacto"] in ("NO_ENCONTRADO", "DEPENDENCIA_SIN_CANAL") and (f["email_institucional"] or f["telefono_institucional"]):
             err.append(f"{ref}: estado '{f['estado_contacto']}' con canal registrado")

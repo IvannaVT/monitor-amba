@@ -41,7 +41,13 @@ DEPENDENCIAS = [
 ]
 GENERAL = dict(clave="contacto_general", dependencia="Contacto institucional general", organismo="MUNICIPALIDAD",
                tipo="CONTACTO_ALTERNATIVO", frases=[])
-POR_CLAVE = {d["clave"]: d for d in [*DEPENDENCIAS, GENERAL]}
+PRENSA = dict(clave="prensa", dependencia="Prensa y Comunicación", organismo="MUNICIPALIDAD", tipo="CONTACTO_ALTERNATIVO", frases=[])
+HCD_CONTACTO = dict(clave="hcd_contacto", dependencia="Contacto institucional general del Concejo Deliberante", organismo="HCD",
+                    tipo="CONTACTO_ALTERNATIVO", frases=[])
+HCD_PRENSA = dict(clave="hcd_prensa", dependencia="Prensa y Comunicación del Concejo Deliberante", organismo="HCD",
+                  tipo="CONTACTO_ALTERNATIVO", frases=[])
+ALTERNATIVOS = [GENERAL, PRENSA, HCD_CONTACTO, HCD_PRENSA]     # canales que no se detectan por frase sino por etiqueta/zona
+POR_CLAVE = {d["clave"]: d for d in [*DEPENDENCIAS, *ALTERNATIVOS]}
 _RX_FRASES = {d["clave"]: re.compile(r"\b(?:" + "|".join(re.escape(f) for f in d["frases"]) + r")\b") for d in DEPENDENCIAS}
 
 RE_EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
@@ -300,7 +306,10 @@ def responsable_tras_titulo(el) -> tuple[str, str, str]:
                 txt, tag = sib.get_text(" ", strip=True), sib.name
                 if tag == "br":
                     continue
-                if tag in ("h1", "h2", "h3", "h4", "h5", "h6") or tag not in _HERMANOS_OK:
+                es_encab = tag in ("h1", "h2", "h3", "h4", "h5", "h6")
+                if es_encab and not (el.name in ("h1", "h2", "h3", "h4", "h5") and tag > el.name):
+                    break                 # solo un encabezado de nivel MÁS PROFUNDO (h3 → h4) puede ser la persona de esa oficina
+                if not es_encab and tag not in _HERMANOS_OK:
                     break
             if not txt:
                 continue
@@ -315,6 +324,22 @@ def responsable_tras_titulo(el) -> tuple[str, str, str]:
                 cargo_pend = txt              # "Jefe de Gabinete" y, en el hermano siguiente, la persona
                 continue
             break
+    return "", "", ""
+
+
+def responsable_en_linea(texto: str) -> tuple[str, str, str]:
+    """'Facundo Carrillo – Jefe de Gabinete', 'Jefatura de Gabinete: Facundo Carrillo' o 'Jefe de Gabinete, Facundo Carrillo' en un mismo texto."""
+    if len(texto) > 140:
+        return "", "", ""
+    partes = [p.strip() for p in re.split(r"\s+[–—-]\s+|\s*[|:]\s*|,\s+", texto) if p.strip()]
+    if not 2 <= len(partes) <= 3:
+        return "", "", ""
+    for i, rotulo in enumerate(partes):
+        if not (deps_en(norm(rotulo)) or RE_CARGO.match(rotulo)):
+            continue
+        for j, cand in enumerate(partes):
+            if i != j and (nombre := _nombre_valido(cand)):
+                return nombre, (rotulo[:80] if RE_CARGO.match(rotulo) else ""), texto
     return "", "", ""
 
 
@@ -380,15 +405,123 @@ def _texto_seguro_str(texto: str, bases: set[str], maximo: int = 240) -> str:
     return re.sub(r"\s+", " ", " ".join(lineas))[:maximo]
 
 
+_CONT_NODOS = ("li", "p", "tr", "dd", "dt", "td", "th", "div", "section", "article")
+_PROPIO = {"hcd_presidencia": "presidencia", "hcd_secretaria": "secretaria"}
+
+
+def _letras(t: str) -> int:
+    return len(re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", t))
+
+
+def tipo_canal(etiqueta: str) -> str:
+    """Tipo de canal que dice la etiqueta local de un correo: prensa, hcd, presidencia, secretaria, contacto o ''."""
+    n = norm(etiqueta)
+    if re.search(r"prensa|comunicaci|difusi|medios", n):
+        return "prensa"
+    if re.search(r"presidenc|president", n):
+        return "presidencia"
+    if re.search(r"secretar", n) and "privada" not in n:
+        return "secretaria"
+    if re.search(r"concejo|\bhcd\b|honorable", n):
+        return "hcd"
+    if re.search(r"contact|consult|informes|escrib|mail|correo", n):
+        return "contacto"
+    return ""
+
+
+def _etiqueta_local(inicio, email: str) -> str:
+    """Texto que rotula a ESTE correo: lo que lo precede en su contenedor, el rótulo hermano anterior o el del contenedor."""
+    n = inicio
+    for _ in range(4):
+        if n is None or n.name in ("body", "html"):
+            return ""
+        if n.name in _CONT_NODOS:
+            t = n.get_text(" ", strip=True)
+            if len(t) > 120:
+                return ""
+            ms = list(RE_EMAIL.finditer(t))
+            pos = t.lower().find(email)
+            if pos >= 0:
+                ant = max([m.end() for m in ms if m.end() <= pos] + [0])
+                if _letras(t[ant:pos]) >= 4:
+                    return t[ant:pos]
+                sig = next((m.start() for m in ms if m.start() > pos), len(t))
+                if _letras(t[pos + len(email):sig]) >= 4:
+                    return t[pos + len(email):sig]
+            elif len(n.find_all("a", href=re.compile(r"^mailto:", re.I))) == 1 and _letras(RE_EMAIL.sub(" ", t)) >= 4:
+                return RE_EMAIL.sub(" ", t)
+            prev = n.find_previous_sibling()
+            if prev is not None and 4 <= len(prev.get_text(" ", strip=True)) <= 60 and not RE_EMAIL.search(prev.get_text(" ", strip=True)):
+                return prev.get_text(" ", strip=True)
+        n = n.parent
+    return ""
+
+
+def emails_etiquetados(nodo) -> dict[str, tuple[str, str]]:
+    """{correo: (tipo de canal, etiqueta local)} para cada correo de la página (mailto: o texto)."""
+    out: dict[str, tuple[str, str]] = {}
+
+    def reg(email: str, inicio) -> None:
+        e = email.strip().strip(".,;:()<>").lower()
+        if RE_EMAIL.fullmatch(e) and e not in out:
+            et = _etiqueta_local(inicio, e)
+            out[e] = (tipo_canal(et), re.sub(r"\s+", " ", et).strip(" :-–")[:80])
+    for a in nodo.find_all("a", href=re.compile(r"^mailto:", re.I)):
+        reg(a["href"][7:].split("?")[0], a)
+    for cad in nodo.find_all(string=RE_EMAIL):
+        for m in RE_EMAIL.finditer(str(cad)):
+            reg(m.group(0), cad.parent)
+    return out
+
+
+def destino_correo(tipo: str, clave: str, hcd: bool, varios: bool) -> str:
+    """Clave a la que pertenece un correo según su etiqueta; `clave` si se queda donde está."""
+    if not tipo or tipo == _PROPIO.get(clave):
+        return clave
+    if tipo == "prensa":
+        return "hcd_prensa" if hcd else "prensa"
+    if tipo == "hcd":
+        return "hcd_contacto"
+    if tipo in ("presidencia", "secretaria"):
+        return ("hcd_presidencia" if tipo == "presidencia" else "hcd_secretaria") if hcd else clave
+    if tipo == "contacto":      # "Contacto:" dentro del bloque de una oficina es de esa oficina, salvo que el bloque liste varios canales
+        return clave if clave in ("contacto_general", "hcd_contacto") or not varios else ("hcd_contacto" if hcd else "contacto_general")
+    return clave
+
+
+def _hallazgo_correos(clave: str, emails: list[str], url: str, et: dict) -> dict:
+    return dict(clave=clave, etiqueta=" / ".join(et[e][1] or e for e in emails)[:120], url=url, con_canal=True, emails=emails, telefonos=[],
+                internos=[], direccion="", horario="", formulario="", responsable="", cargo="", responsable_original="", discrepancias=[],
+                omitidos={}, evidencia=" | ".join(f"{et[e][1]}: {e}" if et[e][1] else e for e in emails)[:240])
+
+
+def _repartir(h: dict, clave: str, hcd: bool, et: dict, url: str, salida: list) -> None:
+    """Saca de `h` los correos cuya etiqueta local es de otro canal (prensa, contacto, HCD...) y los registra aparte."""
+    tipos = [et.get(e, ("", ""))[0] for e in h["emails"]]
+    varios = len(h["emails"]) >= 2 and any(t and t != _PROPIO.get(clave) for t in tipos)
+    propios, ajenos = [], {}
+    for e in h["emails"]:
+        d = destino_correo(et.get(e, ("", ""))[0], clave, hcd, varios)
+        (propios if d == clave else ajenos.setdefault(d, [])).append(e)
+    h["emails"] = propios
+    h["con_canal"] = bool(h["emails"] or h["telefonos"])
+    for d, lista in ajenos.items():
+        salida.append(_hallazgo_correos(d, lista, url, et))
+
+
 def _hay_canal(c: dict) -> bool:
     return bool(c["emails"] or c["telefonos"])
 
 
-def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
+def analizar_pagina(html: str, url: str, bases: set[str], hcd: bool = False) -> dict:
     """Hallazgos por dependencia + contacto general + fecha de actualización visible de la página."""
     soup = BeautifulSoup(html, "lxml")
     titulo = (soup.title.get_text(" ", strip=True) if soup.title else "")[:160]
     _limpiar(soup)
+    # Ámbito: la página es del Concejo si lo es su sitio, su título o su ruta; así los correos del HCD no se atribuyen a la Municipalidad.
+    es_hcd = hcd or bool(re.search(r"concejo deliberante|\bhcd\b|honorable concejo", norm(titulo))) or \
+        bool(re.search(r"/(?:hcd|concejo)", urlparse(url).path, re.I))
+    et = emails_etiquetados(soup.body or soup)
     hallazgos: list[dict] = []
     for el in soup.find_all(True)[:8000]:
         if el.name in ("html", "body", "head") or _en_zona_excluida(el):
@@ -420,7 +553,13 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
                     h.update(c, con_canal=True, evidencia=texto_seguro(bloque, bases))
             if not h["responsable"]:   # organigramas: h3 con el nombre de la oficina y, debajo, un párrafo con la persona
                 h["responsable"], h["cargo"], h["responsable_original"] = responsable_tras_titulo(el)
+            if not h["responsable"]:   # o todo en una línea: "Nombre – Cargo" / "Oficina: Nombre"
+                h["responsable"], h["cargo"], h["responsable_original"] = responsable_en_linea(txt)
+            extra: list[dict] = []
+            if h["con_canal"]:
+                _repartir(h, clave, es_hcd, et, url, extra)
             hallazgos.append(h)
+            hallazgos += extra
     # Contacto general: encabezado/pie/lateral, bloques "contacto", bloques "Atención al vecino"..., o toda la página si es de contacto.
     zonas = list(soup.find_all(["header", "footer", "aside", "nav"]))
     zonas += [z for z in soup.find_all(attrs={"class": re.compile(r"contact", re.I)}) + soup.find_all(attrs={"id": re.compile(r"contact", re.I)})
@@ -462,6 +601,14 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
                 general["omitidos"][k] = general["omitidos"].get(k, 0) + v
     # Respaldo: sin zonas de contacto reconocibles, en portada o página de contacto se toman los canales institucionales del cuerpo
     # que no pertenezcan a ninguna dependencia; queda marcado (`fallback`) para auditarlo.
+    if general is not None:
+        gclave = "hcd_contacto" if es_hcd else "contacto_general"
+        general["clave"] = gclave
+        extra_g: list[dict] = []
+        _repartir(general, gclave, es_hcd, et, url, extra_g)
+        hallazgos += extra_g
+        if not general["con_canal"]:
+            general = None
     if general is None and soup.body and (urlparse(url).path in ("", "/") or re.search(r"contact", urlparse(url).path, re.I)):
         atribuidos = {e for h in hallazgos for e in h.get("emails", [])} | {_digitos(t) for h in hallazgos for t in h.get("telefonos", [])}
         c = _canales(soup.body, url, bases, general=True)
@@ -470,12 +617,12 @@ def analizar_pagina(html: str, url: str, bases: set[str]) -> dict:
         if _hay_canal(c):
             ancla = next((a_ for a_ in soup.body.find_all("a", href=re.compile(r"^(mailto|tel):", re.I))), None)
             ctx = ancla.parent if ancla is not None and ancla.parent is not None else soup.body
-            general = dict(c, clave="contacto_general", etiqueta="Contacto general (respaldo: canales del cuerpo sin dependencia)", url=url,
+            general = dict(c, clave="hcd_contacto" if es_hcd else "contacto_general", etiqueta="Contacto general (respaldo: canales del cuerpo sin dependencia)", url=url,
                            con_canal=True, fallback=True, evidencia=_texto_seguro_str(ctx.get_text("\n", strip=True), bases, 200))
     fecha = ""
     if m := RE_ACTUALIZADO.search(soup.get_text(" ", strip=True)):
         fecha = P.parse_fecha(m.group(1)) or ""
-    return dict(hallazgos=hallazgos, general=general, titulo=titulo, fecha_actualizacion=fecha)
+    return dict(hallazgos=hallazgos, general=general, titulo=titulo, fecha_actualizacion=fecha, es_hcd=es_hcd)
 
 
 # ------------------------------------------------------------------ enlaces a seguir
