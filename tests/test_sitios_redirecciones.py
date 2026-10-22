@@ -34,7 +34,7 @@ def test_sitios_confirmados_del_piloto():
     assert "dominios_verificados" in CFG["ba_avellaneda"]
     resto = [r for mid, r in CFG.items() if mid not in esperado]
     assert len(CFG) == 40 and len(resto) == 37
-    assert all(r["estado"] in ("CANDIDATO_A_VERIFICAR", "SIN_CONFIGURAR") for r in resto)            # ninguno figura como verificado sin comprobarse
+    assert all(r["estado"] in ("CANDIDATO_A_VERIFICAR", "OFICIAL_DOCUMENTADO") for r in resto)       # ninguno figura como verificado sin comprobarse
     assert all(("NO comprobado" in r["fuente"]) == (r["estado"] == "CANDIDATO_A_VERIFICAR") for r in resto)
 
 

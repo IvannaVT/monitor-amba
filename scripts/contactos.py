@@ -35,8 +35,8 @@ def seleccionar(cfg_all: list[dict], pedido: str) -> list[dict]:
     """'intermedia' = muestra de 8; 'todos' = los 40; o una lista de ids/nombres separados por coma."""
     if pedido.strip().lower() == "intermedia":
         return [c for c in cfg_all if c["municipio_id"] in MUESTRA_INTERMEDIA]
-    if pedido.strip().lower() in ("candidatos", "pendientes"):       # solo verificación/identificación de sitios
-        estado = {"candidatos": "CANDIDATO_A_VERIFICAR", "pendientes": "SIN_CONFIGURAR"}[pedido.strip().lower()]
+    if pedido.strip().lower() in ("candidatos", "pendientes", "documentados"):       # solo verificación/identificación de sitios
+        estado = {"candidatos": "CANDIDATO_A_VERIFICAR", "pendientes": "SIN_CONFIGURAR", "documentados": "OFICIAL_DOCUMENTADO"}[pedido.strip().lower()]
         ids = {m for m, s in cargar_sitios().items() if s.get("estado") == estado}
         return [c for c in cfg_all if c["municipio_id"] in ids]
     return E.seleccionar(cfg_all, pedido)
@@ -178,11 +178,13 @@ def _relevar_sitio(cli, cfg: dict, sitio: dict, fecha: str, snap: str, max_pagin
                                        "Corregir config/sitios_oficiales.csv con el dominio oficial del municipio bonaerense."))
         return out
     # CONFIRMADO = una persona verificó que es el sitio oficial de este municipio (p. ej. su título no nombra al municipio).
-    verificado = sitio.get("estado") == "CONFIRMADO" or (CP.nombre_en_texto(nombre, texto_id) and _oficial(host0))
+    documentado = sitio.get("estado") in ("CONFIRMADO", "OFICIAL_DOCUMENTADO")   # una persona / una fuente oficial lo identificó
+    en_ba = CP.evidencia_bonaerense(texto_id + " " + cab.get_text(" ", strip=True)[:6000], cab)
+    verificado = documentado or (CP.nombre_en_texto(nombre, texto_id) and _oficial(host0) and en_ba)
     if not verificado:
         out["incidencias"].append(_inc(mid, "sitio_oficial", "SITIO_NO_VERIFICADO",
                                        f"{r.diagnostico()}; no se pudo verificar que sea el sitio oficial de {nombre} "
-                                       f"(título/encabezados sin el nombre o dominio fuera de gob.ar/gov.ar).", url0, fecha, snap, "ALTO",
+                                       f"(título/encabezados sin el nombre, dominio fuera de gob.ar/gov.ar o sin evidencia de pertenecer a la provincia de Buenos Aires).", url0, fecha, snap, "ALTO",
                                        "Revisar el dominio; marcar estado=CONFIRMADO en config solo tras verificación manual."))
         return out
     out["sitio_ok"] = True

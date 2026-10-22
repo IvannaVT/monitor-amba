@@ -197,8 +197,9 @@ def test_presets_candidatos_y_pendientes_y_workflow():
     cfg = C.cargar_municipios_cfg()
     est = {m: s["estado"] for m, s in K.cargar_sitios().items()}
     cand, pend = K.seleccionar(cfg, "candidatos"), K.seleccionar(cfg, "pendientes")
-    assert {c["municipio_id"] for c in cand} == {m for m, e in est.items() if e == "CANDIDATO_A_VERIFICAR"} and len(cand) == 29
-    assert {c["municipio_id"] for c in pend} == {m for m, e in est.items() if e == "SIN_CONFIGURAR"} and len(pend) == 8
+    assert {c["municipio_id"] for c in cand} == {m for m, e in est.items() if e == "CANDIDATO_A_VERIFICAR"} and len(cand) == 28
+    assert {c["municipio_id"] for c in pend} == {m for m, e in est.items() if e == "SIN_CONFIGURAR"} and len(pend) == 0
+    assert len(K.seleccionar(cfg, "documentados")) == 9
     wf = (AQUI.parent / ".github" / "workflows" / "relevar_contactos.yml").read_text(encoding="utf-8")
-    assert "options: [prueba, intermedia, completo, candidatos, pendientes]" in wf and "solo_sitios" in wf
+    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados]" in wf and "solo_sitios" in wf
     assert "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf and "scripts/extraer.py" not in wf

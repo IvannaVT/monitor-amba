@@ -71,10 +71,11 @@ def raices_candidatas(host: str) -> list[str]:
 
 
 def base_de(host: str) -> str:
-    return ".".join((host or "").lower().split(".")[-3:])
+    h = (host or "").lower()
+    return ".".join(h.split(".")[-3:] if h.endswith((".gob.ar", ".gov.ar")) else h.split(".")[-2:])
 
 
-def verificar_raiz(cli, raiz: str, nombre: str) -> dict:
+def verificar_raiz(cli, raiz: str, nombre: str, exigir_nombre: bool = True, exigir_provincia: bool = True) -> dict:
     base = base_de(urlparse(raiz).hostname)
     r = K._get(cli, raiz, {base})
     res = {"raiz": raiz, "http": r.status, "titulo": "", "ok": False, "detalle": ""}
@@ -92,8 +93,10 @@ def verificar_raiz(cli, raiz: str, nombre: str) -> dict:
         res["detalle"] = "posible homónimo de otra provincia"
     elif base_de(host_final) != base:
         res["detalle"] = f"el destino final ({host_final}) no es del dominio verificado"
-    elif not CP.nombre_en_texto(nombre, ident):
+    elif exigir_nombre and not CP.nombre_en_texto(nombre, ident):
         res["detalle"] = "el título/encabezados no nombran al municipio"
+    elif exigir_provincia and not CP.evidencia_bonaerense(ident + " " + cab.get_text(" ", strip=True)[:6000], cab):
+        res["detalle"] = "sin evidencia de pertenecer a la provincia de Buenos Aires (podría ser un homónimo de otra provincia)"
     else:
         res["ok"], res["raiz"] = True, E.url_segura(r.url_final or raiz)
     return res
@@ -108,6 +111,11 @@ def descubrir(cli, cfg_all: list[dict], sitios: dict[str, dict], seleccion: list
                 "ficha": cfg.get("url_portal_municipio", ""), "detalle": ""}
         resultados.append(fila)
         s = sitios.get(mid, {})
+        if s.get("estado") == "OFICIAL_DOCUMENTADO" and s.get("sitio_oficial"):     # identificado en una fuente oficial: solo se comprueba el acceso HTTP
+            v = verificar_raiz(cli, s["sitio_oficial"], nombre, exigir_nombre=False, exigir_provincia=False)
+            fila.update(estado="DOCUMENTADO_HTTP_OK" if v["ok"] else "DOCUMENTADO_HTTP_FALLIDO", sitio=s["sitio_oficial"], http=v["http"],
+                        titulo=v["titulo"], detalle=v["detalle"])
+            continue
         candidato = s.get("sitio_oficial", "") if s.get("estado") == "CANDIDATO_A_VERIFICAR" else ""
         if s.get("estado") in ("CONFIRMADO", ESTADO_OK) or (s.get("sitio_oficial") and not candidato):
             fila.update(estado="YA_CONFIGURADO", sitio=s.get("sitio_oficial", ""))
@@ -151,10 +159,19 @@ def descubrir(cli, cfg_all: list[dict], sitios: dict[str, dict], seleccion: list
     return resultados
 
 
-def aplicar_config(resultados: list[dict], ruta: Path) -> int:
+def aplicar_config(resultados: list[dict], ruta: Path, fecha: str | None = None) -> int:
     """Completa filas SIN_CONFIGURAR o CANDIDATO_A_VERIFICAR con sitios verificados técnicamente; nunca pisa CONFIRMADO ni lo ya verificado."""
     filas = C.leer_csv(ruta)
     cols = list(filas[0].keys())
+    fecha = fecha or C.ahora_utc().strftime("%Y-%m-%d")
+    if "verificacion_http" not in cols:
+        cols.append("verificacion_http")
+    http = {r["municipio_id"]: r for r in resultados if r["estado"] in ("DOCUMENTADO_HTTP_OK", "DOCUMENTADO_HTTP_FALLIDO")}
+    for f in filas:    # la verificación técnica de un sitio documentado va en su propia columna: no cambia su condición documental
+        if f["municipio_id"] in http:
+            r_ = http[f["municipio_id"]]
+            f["verificacion_http"] = (f"HTTP {r_['http']} verificado el {fecha}; título '{r_['titulo']}'" if r_["estado"] == "DOCUMENTADO_HTTP_OK"
+                                      else f"NO verificado el {fecha}: {r_['detalle'][:200]}")
     n = 0
     por_id = {r["municipio_id"]: r for r in resultados if r["estado"] == ESTADO_OK}
     for f in filas:
@@ -176,13 +193,13 @@ def informe_cobertura(sitios: list[dict], resultados: list[dict] | None = None) 
     cuenta: dict[str, int] = {}
     for s in sitios:
         cuenta[s["estado"]] = cuenta.get(s["estado"], 0) + 1
-    etiqueta = {"CONFIRMADO": "verificado por una persona", "VERIFICADO_TECNICAMENTE": "verificado técnicamente (falta confirmación humana)",
+    etiqueta = {"CONFIRMADO": "verificado por una persona", "OFICIAL_DOCUMENTADO": "oficial según fuente documental (la verificación HTTP va aparte)", "VERIFICADO_TECNICAMENTE": "verificado técnicamente (falta confirmación humana)",
                 "CANDIDATO_A_VERIFICAR": "candidato NO comprobado", "SIN_CONFIGURAR": "pendiente (sin candidato)"}
     l = ["# Cobertura territorial: sitios oficiales\n", "| Estado | Significado | Municipios |", "|---|---|---|"] + \
         [f"| {k} | {etiqueta.get(k, '')} | {v} |" for k, v in sorted(cuenta.items())]
-    l += ["", "| Municipio | Estado | Sitio oficial | Fuente |", "|---|---|---|---|"]
+    l += ["", "| Municipio | Estado | Sitio oficial | Verificación HTTP | Fuente |", "|---|---|---|---|---|"]
     for s in sitios:
-        l.append(f"| {s['municipio_id']} | {s['estado']} | {s['sitio_oficial']} | {(s.get('fuente') or '')[:80]} |")
+        l.append(f"| {s['municipio_id']} | {s['estado']} | {s['sitio_oficial']} | {(s.get('verificacion_http') or '—')[:50]} | {(s.get('fuente') or '')[:70]} |")
     if resultados:
         l += ["", "## Resultado del descubrimiento", "", "| Municipio | Resultado | Sitio | HTTP | Detalle |", "|---|---|---|---|---|"]
         l += [f"| {r['municipio']} | {r['estado']} | {r['sitio']} | {r['http'] or ''} | {r['detalle'][:100]} |" for r in resultados]
@@ -195,7 +212,7 @@ def registrar_incidencias(resultados: list[dict], dir_actual: Path | None = None
     dir_actual, dir_hist = dir_actual or C.DIR_ACTUAL, dir_hist or C.DIR_HISTORICO
     nuevas = [E._incidencia(r["municipio_id"], "sitios:descubrimiento", r["estado"], r["detalle"] or r["estado"], r["ficha"] or E.BASE_URL, fecha, snap,
                             "MEDIO", "Confirmar o cargar el sitio oficial a mano en config/sitios_oficiales.csv.", E.BASE_URL)
-              for r in resultados if r["estado"] not in (ESTADO_OK, "YA_CONFIGURADO")]
+              for r in resultados if r["estado"] not in (ESTADO_OK, "YA_CONFIGURADO", "DOCUMENTADO_HTTP_OK")]
     todas = C.leer_csv(dir_actual / C.F_INCIDENCIAS)
     propias = [i for i in todas if i["campo"].startswith("sitios:")]
     resto = [i for i in todas if not i["campo"].startswith("sitios:")]

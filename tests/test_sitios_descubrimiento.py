@@ -33,8 +33,9 @@ def ficha(extra_links: str) -> str:
 <li>Honorable Tribunal de Cuentas: <a href="https://www.hcdn-prueba.gob.ar/fallos">Buscador de fallos</a></li>{extra_links}</ul></body></html>"""
 
 
-def home(titulo, extra=""):
-    return f"<html><head><title>{titulo}</title></head><body><h1>{titulo}</h1>{extra}</body></html>"
+def home(titulo, extra="", ba=True):
+    prov = "<p>Provincia de Buenos Aires</p>" if ba else ""
+    return f"<html><head><title>{titulo}</title></head><body><h1>{titulo}</h1>{prov}{extra}</body></html>"
 
 
 def sesion():
@@ -51,7 +52,7 @@ def sesion():
         "https://hacienda.moron-prueba.gob.ar/": R(404),
         "https://moron-prueba.gob.ar/": R(text=home("Municipalidad de Morón")),
         FICHA("ba_san_isidro"): R(text=ficha('<li>Municipalidad de San Isidro: <a href="https://www.sanisidro-prueba.gob.ar/a.pdf">a</a></li>')),
-        "https://www.sanisidro-prueba.gob.ar/": R(text=home("Municipio de San Isidro - Provincia de Córdoba")),   # homónimo declarado
+        "https://www.sanisidro-prueba.gob.ar/": R(text=home("Municipio de San Isidro - Provincia de Córdoba", ba=False)),   # homónimo declarado
     }
     return SesionPorHost(P)
 
@@ -132,7 +133,7 @@ def test_aplicar_solo_completa_sin_configurar_y_conserva_lo_confirmado(tmp_path)
 def test_el_repositorio_no_incluye_sitios_no_auditados():
     est = {r["municipio_id"]: r["estado"] for r in C.leer_csv(C.ARCHIVO_SITIOS)}
     assert sum(1 for e in est.values() if e == "CONFIRMADO") == 3 and "VERIFICADO_TECNICAMENTE" not in est.values()   # nada sin comprobar figura como verificado
-    assert sum(1 for e in est.values() if e == "CANDIDATO_A_VERIFICAR") + sum(1 for e in est.values() if e == "SIN_CONFIGURAR") == 37
+    assert sum(1 for e in est.values() if e == "CANDIDATO_A_VERIFICAR") + sum(1 for e in est.values() if e == "OFICIAL_DOCUMENTADO") == 37
 
 
 def test_validador_exige_fuente_en_los_verificados_tecnicamente(tmp_path, monkeypatch):
@@ -201,7 +202,7 @@ def test_intendencia_es_despacho_y_el_orden_de_prioridad():
 # ------------------------------------------------------------------ workflow: nada sin auditar llega a main
 def test_workflow_intermedia_completo_y_sin_escritura_en_main():
     wf = (AQUI.parent / ".github" / "workflows" / "relevar_contactos.yml").read_text(encoding="utf-8")
-    assert "options: [prueba, intermedia, completo, candidatos, pendientes]" in wf and "scripts/descubrir_sitios.py" in wf and "--aplicar" in wf
+    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados]" in wf and "scripts/descubrir_sitios.py" in wf and "--aplicar" in wf
     assert "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
     assert "default: false" in wf.split("confirmar_cambios:")[1][:300]
     assert "git add data docs/informe_contactos.md" in wf and "config/" not in wf.split("git add")[1].split("\n")[0]
