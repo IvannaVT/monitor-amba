@@ -78,17 +78,27 @@ jobs:
 
       - name: Validar CSV
         if: ${{ !inputs.solo_sitios }}
-        run: python scripts/validar.py --modo prueba
+        run: python scripts/validar.py --modo prueba --informe docs/validacion_contactos.md
 
       - name: Resumen
         if: always()
         run: |
           [ -f docs/informe_contactos.md ] && cat docs/informe_contactos.md >> "$GITHUB_STEP_SUMMARY"
-          python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
-          import csv, collections
+          [ ! -f docs/validacion_contactos.md ] || cat docs/validacion_contactos.md >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import csv, collections, html
           f = list(csv.DictReader(open("data/actual/06_amba_incidencias.csv", encoding="utf-8-sig"), delimiter=";"))
           c = collections.Counter(r["tipo_incidencia"] for r in f if r["campo"].startswith("contacto:") and r["estado_resolucion"] == "ABIERTA")
           print("\n### Incidencias de contactos abiertas\n" + ("\n".join(f"- `{k}`: {v}" for k, v in c.most_common()) or "- ninguna"))
+          print("\n### Diagnóstico de sitios oficiales (incidencias abiertas; incluye fecha de revisión)\n")
+          sitios = [r for r in f if r["campo"] == "contacto:sitio_oficial" and r["estado_resolucion"] == "ABIERTA"]
+          if not sitios:
+              print("- ninguna")
+          for r in sitios:
+              detalle = " ".join(r["descripcion"].split())
+              accion = " ".join(r["accion_recomendada"].split())
+              print("- " + html.escape(f'{r["municipio_id"]} | {r["tipo_incidencia"]} | revisión {r["fecha_ultima_revision"]}: {detalle}'))
+              print("  - Acción recomendada: " + html.escape(accion))
           PY
 
       - uses: actions/upload-artifact@v4
@@ -99,6 +109,7 @@ jobs:
             config/sitios_oficiales.csv
             data/
             docs/informe_contactos.md
+            docs/validacion_contactos.md
             contactos.json
             diagnostico_contactos/
 
