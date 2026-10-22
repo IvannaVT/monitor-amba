@@ -21,7 +21,7 @@ BASES = {"avellaneda-prueba.gob.ar"}
 
 
 def home(extra=""):
-    return f"""<html><head><title>Municipalidad de Avellaneda (PRUEBA SINTÉTICA)</title></head><body>
+    return f"""<html><head><title>Municipalidad de Avellaneda (PRUEBA SINTÉTICA) - Provincia de Buenos Aires</title></head><body>
 <nav><a href="/autoridades/">Autoridades</a> <a href="/contacto/">Contacto</a> <a href="{HCD}/">Honorable Concejo Deliberante</a>
 <a href="/cultura/">Cultura</a></nav><h1>Municipalidad de Avellaneda</h1>{extra}
 <footer>Tel: 4201-0000 | Mesa general: <a href="mailto:info@avellaneda-prueba.gob.ar">info@avellaneda-prueba.gob.ar</a></footer></body></html>"""
@@ -292,5 +292,5 @@ def test_workflow_de_contactos_separado_manual_y_sin_commit_por_defecto():
 def test_sitios_oficiales_config():
     cfg = list(csv.DictReader(open(K.SITIOS, encoding="utf-8-sig"), delimiter=";"))
     assert len(cfg) == 40 and {r["municipio_id"] for r in cfg} == {m["municipio_id"] for m in C.cargar_municipios_cfg()}
-    assert all(r["estado"] in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "VERIFICADO_TECNICAMENTE", "CONFIRMADO") for r in cfg)
+    assert all(r["estado"] in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "VERIFICADO_TECNICAMENTE", "OFICIAL_DOCUMENTADO", "CONFIRMADO") for r in cfg)
     assert all(r["sitio_oficial"].startswith("https://") for r in cfg if r["sitio_oficial"])

@@ -22,6 +22,7 @@ ARCHIVO_REGLAS = DIR_CONFIG / "reglas_alertas.json"
 ARCHIVO_NOMBRES = DIR_CONFIG / "intendentes_nombres.csv"
 ARCHIVO_SITIOS = DIR_CONFIG / "sitios_oficiales.csv"
 ARCHIVO_VERIFICADOS = DIR_CONFIG / "contactos_verificados.csv"
+ARCHIVO_HOMONIMOS = DIR_CONFIG / "dominios_homonimos.csv"
 
 F_MUNICIPIOS = "01_amba_municipios.csv"
 F_BLOQUES = "02_amba_concejos_bloques.csv"

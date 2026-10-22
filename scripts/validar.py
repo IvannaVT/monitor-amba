@@ -166,7 +166,7 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
     hosts_sitios: dict[str, str] = {}
     for s_ in C.leer_csv(C.ARCHIVO_SITIOS):  # sitios oficiales: https, un dominio por municipio, sin homónimos de otras provincias
         ref = f"config/sitios_oficiales.csv {s_['municipio_id']}"
-        if s_.get("estado") not in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "VERIFICADO_TECNICAMENTE", "CONFIRMADO"):
+        if s_.get("estado") not in ("SIN_CONFIGURAR", "CANDIDATO_A_VERIFICAR", "VERIFICADO_TECNICAMENTE", "OFICIAL_DOCUMENTADO", "CONFIRMADO"):
             err.append(f"{ref}: estado inválido '{s_.get('estado')}'")
         u_ = (s_.get("sitio_oficial") or "").strip()
         if not u_:
@@ -179,8 +179,13 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         if host_ in hosts_sitios and hosts_sitios[host_] != s_["municipio_id"]:
             err.append(f"{ref}: el dominio {host_} ya está asignado a {hosts_sitios[host_]}")
         hosts_sitios[host_] = s_["municipio_id"]
-        if s_.get("estado") in ("CONFIRMADO", "VERIFICADO_TECNICAMENTE") and not (s_.get("fuente") or "").strip():
+        if s_.get("estado") in ("CONFIRMADO", "VERIFICADO_TECNICAMENTE", "OFICIAL_DOCUMENTADO") and not (s_.get("fuente") or "").strip():
             err.append(f"{ref}: {s_['estado']} sin fuente de la verificación")
+        if s_.get("estado") == "OFICIAL_DOCUMENTADO" and "gba.gob.ar/municipios" not in (s_.get("fuente") or ""):
+            err.append(f"{ref}: OFICIAL_DOCUMENTADO debe citar la fuente provincial (https://www.gba.gob.ar/municipios)")
+        if not host_.endswith((".gob.ar", ".gov.ar")) and not (s_.get("estado") in ("OFICIAL_DOCUMENTADO", "CONFIRMADO")
+                                                                 and "gba.gob.ar/municipios" in (s_.get("fuente") or "")):
+            err.append(f"{ref}: dominio no gubernamental ({host_}) sin referencia oficial explícita al municipio (gba.gob.ar/municipios)")
         for a_ in filter(None, (x.strip() for x in (s_.get("fuentes_alternativas") or "").split(";"))):
             if not a_.startswith("https://") or _CP.dominio_homonimo(a_.split("/")[2] if a_.count("/") >= 2 else ""):
                 err.append(f"{ref}: fuentes_alternativas debe ser https y no un homónimo ('{a_}')")

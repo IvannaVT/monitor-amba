@@ -93,7 +93,18 @@ def dominio_base(host: str) -> str:
 
 
 # Dominios de municipios HOMÓNIMOS de otras provincias (ya identificados): nunca son oficiales para el AMBA.
-DOMINIOS_HOMONIMOS = {"avellaneda.gob.ar": "Avellaneda (Santa Fe)"}
+def _cargar_homonimos() -> dict[str, str]:
+    """Base fija + config/dominios_homonimos.csv (dominio;municipio;provincia;fuente)."""
+    d = {"avellaneda.gob.ar": "Avellaneda (Santa Fe)", "ituzaingo.gob.ar": "Ituzaingó (Corrientes)"}
+    for r in C.leer_csv(C.ARCHIVO_HOMONIMOS):
+        dom = (r.get("dominio") or "").strip().lower().removeprefix("www.")
+        if dom:
+            d[dom] = f"{r.get('municipio', '').strip()} ({r.get('provincia', '').strip()})"
+    return d
+
+
+DOMINIOS_HOMONIMOS = _cargar_homonimos()
+_RX_BA_POSITIVA = re.compile(r"\b(?:provincia|pcia|prov) de (?:buenos aires|bs as)\b")
 _PROVINCIAS_AJENAS = ["santa fe", "cordoba", "mendoza", "tucuman", "salta", "jujuy", "entre rios", "corrientes", "chaco", "misiones",
                       "la pampa", "san juan", "san luis", "rio negro", "neuquen", "chubut", "santa cruz", "tierra del fuego",
                       "catamarca", "la rioja", "santiago del estero", "formosa"]
@@ -115,6 +126,19 @@ def dominio_homonimo(host: str) -> str:
     """Nombre del municipio homónimo si el host pertenece a su dominio (o a un subdominio), o ''."""
     h = dominio_base(host)
     return next((v for d, v in DOMINIOS_HOMONIMOS.items() if h == d or h.endswith("." + d)), "")
+
+
+def evidencia_bonaerense(texto: str, soup=None) -> bool:
+    """Evidencia POSITIVA de pertenecer a la provincia de Buenos Aires: la nombra ('Provincia de Buenos Aires', 'Pcia. de Bs. As.') o
+    enlaza al sitio del Gobierno provincial (gba.gob.ar). Sin ella un homónimo de otra provincia podría pasar por verificado."""
+    if _RX_BA_POSITIVA.search(norm(texto)):
+        return True
+    if soup is not None:
+        for a in soup.find_all("a", href=True):
+            h = (urlparse(a["href"]).hostname or "").lower()
+            if h == "gba.gob.ar" or h.endswith(".gba.gob.ar"):
+                return True
+    return False
 
 
 def provincia_ajena(texto: str) -> str:

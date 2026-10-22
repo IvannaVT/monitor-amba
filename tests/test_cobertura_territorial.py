@@ -30,31 +30,26 @@ CFG = {m["municipio_id"]: m for m in C.cargar_municipios_cfg()}
 
 
 # ------------------------------------------------------------------ FASE A: cobertura y estados
-def test_cobertura_verificados_candidatos_y_pendientes():
+def test_cobertura_documentados_candidatos_y_pendientes():
     est = {m: r["estado"] for m, r in SIT.items()}
     cuenta = {e: list(est.values()).count(e) for e in set(est.values())}
-    assert cuenta == {"CONFIRMADO": 3, "CANDIDATO_A_VERIFICAR": 29, "SIN_CONFIGURAR": 8}            # 0 verificados técnicamente sin haberse comprobado
+    assert cuenta == {"CONFIRMADO": 3, "OFICIAL_DOCUMENTADO": 9, "CANDIDATO_A_VERIFICAR": 28}     # 0 pendientes; 0 verificados técnicamente sin haberse comprobado
     for mid, r in SIT.items():
         if r["estado"] == "CANDIDATO_A_VERIFICAR":
             assert "NO comprobado" in r["fuente"] and r["sitio_oficial"].startswith("https://www."), mid
-        if r["estado"] == "SIN_CONFIGURAR":
-            assert not r["sitio_oficial"] and not r["fuente"], mid
-    assert [m for m, e in est.items() if e == "SIN_CONFIGURAR"] == [
-        "ba_berisso", "ba_brandsen", "ba_ensenada", "ba_exaltacion_de_la_cruz", "ba_florencio_varela", "ba_general_las_heras",
-        "ba_general_rodriguez", "ba_presidente_peron"]
 
 
 def test_dominios_unicos_oficiales_y_sin_homonimos():
-    hosts = [CP.dominio_base(urlparse(r["sitio_oficial"]).hostname) for r in SIT.values() if r["sitio_oficial"]]
-    assert len(hosts) == 32 and len(set(hosts)) == 32
-    assert all(h.endswith((".gob.ar", ".gov.ar")) and not CP.dominio_homonimo(h) for h in hosts)
-    assert V.validar(Path("/nonexistent"), "prueba")[0] == [] or not [e for e in V.validar(Path("/nonexistent"), "prueba")[0] if "sitios_oficiales" in e]
+    hosts = [CP.dominio_base(urlparse(r["sitio_oficial"]).hostname) for r in SIT.values()]
+    assert len(hosts) == 40 and len(set(hosts)) == 40 and all(SIT[m]["sitio_oficial"].startswith("https://") for m in SIT)
+    assert not [h for h in hosts if CP.dominio_homonimo(h)]
+    assert not [e for e in V.validar(Path("/nonexistent"), "prueba")[0] if "sitios_oficiales" in e]
 
 
 def test_el_documento_de_cobertura_coincide_con_la_config():
     md = (AQUI.parent / "docs" / "cobertura_territorial.md").read_text(encoding="utf-8")
-    assert "| CONFIRMADO | verificado por una persona | 3 |" in md and "| CANDIDATO_A_VERIFICAR | candidato NO comprobado | 29 |" in md
-    assert "| SIN_CONFIGURAR | pendiente (sin candidato) | 8 |" in md and "VERIFICADO_TECNICAMENTE |" not in md.split("| Municipio |")[0]
+    assert "| CONFIRMADO | verificado por una persona | 3 |" in md and "| CANDIDATO_A_VERIFICAR | candidato NO comprobado | 28 |" in md
+    assert "| OFICIAL_DOCUMENTADO | oficial según fuente documental (la verificación HTTP va aparte) | 9 |" in md and "SIN_CONFIGURAR" not in md.split("| Municipio |")[0]
 
 
 # ------------------------------------------------------------------ verificación de candidatos (Actions)
@@ -76,7 +71,7 @@ def test_candidato_correcto_pasa_a_verificado_tecnicamente_sin_acudir_a_la_ficha
 @pytest.mark.parametrize("pag,detalle", [
     ({"https://www.lanus-prueba.gob.ar/": R(text=home("Otra cosa"))}, "no nombran al municipio"),
     ({"https://www.lanus-prueba.gob.ar/": R(404)}, "HTTP 404"),
-    ({"https://www.lanus-prueba.gob.ar/": R(text=home("Municipio de Lanús - Provincia de Mendoza"))}, "homónimo"),
+    ({"https://www.lanus-prueba.gob.ar/": R(text=home("Municipio de Lanús - Provincia de Mendoza", ba=False))}, "homónimo"),
 ])
 def test_candidato_que_no_se_comprueba_no_se_presenta_como_verificado(pag, detalle):
     r, _ = correr(pag, sit("CANDIDATO_A_VERIFICAR", "https://www.lanus-prueba.gob.ar/"))
@@ -219,5 +214,5 @@ def test_informe_separa_canales_especificos_de_generales(dirs):
 
 def test_workflow_sigue_manual_sin_commits_en_main_ni_cambios_de_config():
     wf = (AQUI.parent / ".github" / "workflows" / "relevar_contactos.yml").read_text(encoding="utf-8")
-    assert "options: [prueba, intermedia, completo, candidatos, pendientes]" in wf and "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
+    assert "options: [prueba, intermedia, completo, candidatos, pendientes, documentados]" in wf and "github.ref_name != 'main'" in wf and "\n  schedule:" not in wf
     assert "scripts/extraer.py" not in wf
