@@ -33,7 +33,9 @@ def test_sitios_confirmados_del_piloto():
     assert urlparse(CFG["ba_avellaneda"]["sitio_oficial"]).hostname != "avellaneda.gob.ar"      # ese dominio es de Avellaneda (Santa Fe)
     assert "dominios_verificados" in CFG["ba_avellaneda"]
     resto = [r for mid, r in CFG.items() if mid not in esperado]
-    assert len(CFG) == 40 and len(resto) == 37 and all(r["estado"] == "SIN_CONFIGURAR" and not r["sitio_oficial"] for r in resto)
+    assert len(CFG) == 40 and len(resto) == 37
+    assert all(r["estado"] in ("CANDIDATO_A_VERIFICAR", "SIN_CONFIGURAR") for r in resto)            # ninguno figura como verificado sin comprobarse
+    assert all(("NO comprobado" in r["fuente"]) == (r["estado"] == "CANDIDATO_A_VERIFICAR") for r in resto)
 
 
 # ------------------------------------------------------------------ redirecciones en el cliente

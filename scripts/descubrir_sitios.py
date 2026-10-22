@@ -92,7 +92,7 @@ def verificar_raiz(cli, raiz: str, nombre: str) -> dict:
         res["detalle"] = "posible homónimo de otra provincia"
     elif base_de(host_final) != base:
         res["detalle"] = f"el destino final ({host_final}) no es del dominio verificado"
-    elif C.normalizar_texto(nombre) not in C.normalizar_texto(ident):
+    elif not CP.nombre_en_texto(nombre, ident):
         res["detalle"] = "el título/encabezados no nombran al municipio"
     else:
         res["ok"], res["raiz"] = True, E.url_segura(r.url_final or raiz)
@@ -100,57 +100,70 @@ def verificar_raiz(cli, raiz: str, nombre: str) -> dict:
 
 
 def descubrir(cli, cfg_all: list[dict], sitios: dict[str, dict], seleccion: list[dict]) -> list[dict]:
-    resultados, usados = [], {base_de(urlparse(s["sitio_oficial"]).hostname) for s in sitios.values() if s.get("sitio_oficial")}
+    resultados = []
+    dueno = {base_de(urlparse(s["sitio_oficial"]).hostname): m for m, s in sitios.items() if s.get("sitio_oficial")}   # dominio -> municipio
     for cfg in seleccion:
         mid, nombre = cfg["municipio_id"], cfg["municipio"]
         fila = {"municipio_id": mid, "municipio": nombre, "estado": "", "sitio": "", "http": None, "titulo": "", "enlace_documento": "",
                 "ficha": cfg.get("url_portal_municipio", ""), "detalle": ""}
         resultados.append(fila)
         s = sitios.get(mid, {})
-        if s.get("sitio_oficial") or s.get("estado") == "CONFIRMADO":
+        candidato = s.get("sitio_oficial", "") if s.get("estado") == "CANDIDATO_A_VERIFICAR" else ""
+        if s.get("estado") in ("CONFIRMADO", ESTADO_OK) or (s.get("sitio_oficial") and not candidato):
             fila.update(estado="YA_CONFIGURADO", sitio=s.get("sitio_oficial", ""))
             continue
+        previo = ""
+        if candidato:                       # 1) se verifica el candidato cargado; no se toma por bueno sin comprobarlo
+            v = verificar_raiz(cli, candidato, nombre)
+            if v["ok"] and dueno.get(base_de(urlparse(v["raiz"]).hostname), mid) == mid:
+                fila.update(estado=ESTADO_OK, sitio=v["raiz"], http=v["http"], titulo=v["titulo"], origen="candidato verificado")
+                continue
+            previo = f"candidato {candidato}: {v['detalle'] or 'dominio ya asignado a otro municipio'}"
+            fila["detalle"] = previo
         if not fila["ficha"]:
-            fila.update(estado="FICHA_NO_CONFIGURADA", detalle="sin url_portal_municipio")
+            fila.update(estado="CANDIDATO_NO_VERIFICADO" if candidato else "FICHA_NO_CONFIGURADA", detalle=previo or "sin url_portal_municipio")
             continue
-        r = cli.get(fila["ficha"])
+        r = cli.get(fila["ficha"])                    # 2) respaldo: enlaces de la ficha del portal
         if not r.ok:
-            fila.update(estado=r.tipo_error, http=r.status, detalle=r.diagnostico())
+            fila.update(estado="CANDIDATO_NO_VERIFICADO" if candidato else r.tipo_error, http=r.status, detalle=(previo + " | " if previo else "") + r.diagnostico())
             continue
         cands, fallos = candidatos_desde_ficha(r.texto, fila["ficha"], nombre), []
         if not cands:
-            fila.update(estado="SITIO_NO_DESCUBIERTO", detalle="la ficha no enlaza documentos de la Municipalidad en dominios gob.ar/gov.ar")
+            fila.update(estado="CANDIDATO_NO_VERIFICADO" if candidato else "SITIO_NO_DESCUBIERTO",
+                        detalle=(previo + " | " if previo else "") + "la ficha no enlaza documentos de la Municipalidad en dominios gob.ar/gov.ar")
             continue
         for cand in cands[:2]:
             for raiz in raices_candidatas(cand["host"]):
                 v = verificar_raiz(cli, raiz, nombre)
                 if v["ok"]:
-                    if base_de(urlparse(v["raiz"]).hostname) in usados:
+                    if dueno.get(base_de(urlparse(v["raiz"]).hostname), mid) != mid:
                         fila.update(estado="DOMINIO_DUPLICADO", sitio=v["raiz"], detalle="ya asignado a otro municipio")
                     else:
-                        usados.add(base_de(urlparse(v["raiz"]).hostname))
-                        fila.update(estado=ESTADO_OK, sitio=v["raiz"], http=v["http"], titulo=v["titulo"], enlace_documento=cand["enlaces"][0])
+                        dueno[base_de(urlparse(v["raiz"]).hostname)] = mid
+                        fila.update(estado=ESTADO_OK, sitio=v["raiz"], http=v["http"], titulo=v["titulo"], enlace_documento=cand["enlaces"][0],
+                                    origen="ficha del portal")
                     break
                 fallos.append(f"{raiz}: {v['detalle']}")
             if fila["estado"]:
                 break
         if not fila["estado"]:
-            fila.update(estado="SITIO_NO_VERIFICADO", detalle=" | ".join(fallos)[:300])
+            fila.update(estado="CANDIDATO_NO_VERIFICADO" if candidato else "SITIO_NO_VERIFICADO", detalle=" | ".join(([previo] if previo else []) + fallos)[:300])
     return resultados
 
 
 def aplicar_config(resultados: list[dict], ruta: Path) -> int:
-    """Completa SOLO filas SIN_CONFIGURAR con sitios verificados técnicamente; nunca pisa lo cargado."""
+    """Completa filas SIN_CONFIGURAR o CANDIDATO_A_VERIFICAR con sitios verificados técnicamente; nunca pisa CONFIRMADO ni lo ya verificado."""
     filas = C.leer_csv(ruta)
     cols = list(filas[0].keys())
     n = 0
     por_id = {r["municipio_id"]: r for r in resultados if r["estado"] == ESTADO_OK}
     for f in filas:
         v = por_id.get(f["municipio_id"])
-        if v and not f.get("sitio_oficial") and f.get("estado") == "SIN_CONFIGURAR":
-            f.update(sitio_oficial=v["sitio"], estado=ESTADO_OK,
-                     fuente=f"descubierto en la ficha del portal {v['ficha']} → enlace {v['enlace_documento']}; HTTP {v['http']}; "
-                            f"título '{v['titulo']}'; pendiente de confirmación humana")
+        if v and ((not f.get("sitio_oficial") and f.get("estado") == "SIN_CONFIGURAR") or f.get("estado") == "CANDIDATO_A_VERIFICAR"):
+            origen = (f"candidato cargado en la config, comprobado: HTTP {v['http']}; título '{v['titulo']}'" if v.get("origen") == "candidato verificado"
+                      else f"descubierto en la ficha del portal {v['ficha']} → enlace {v['enlace_documento']}; HTTP {v['http']}; título '{v['titulo']}'")
+            anterior = f" (candidato anterior no comprobado: {f['sitio_oficial']})" if f.get("sitio_oficial") and f["sitio_oficial"] != v["sitio"] else ""
+            f.update(sitio_oficial=v["sitio"], estado=ESTADO_OK, fuente=f"{origen}{anterior}; pendiente de confirmación humana")
             n += 1
     with open(ruta, "w", encoding="utf-8-sig", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, delimiter=";", lineterminator="\n")
@@ -163,8 +176,10 @@ def informe_cobertura(sitios: list[dict], resultados: list[dict] | None = None) 
     cuenta: dict[str, int] = {}
     for s in sitios:
         cuenta[s["estado"]] = cuenta.get(s["estado"], 0) + 1
-    l = ["# Cobertura territorial: sitios oficiales\n", "| Estado | Municipios |", "|---|---|"] + \
-        [f"| {k} | {v} |" for k, v in sorted(cuenta.items())]
+    etiqueta = {"CONFIRMADO": "verificado por una persona", "VERIFICADO_TECNICAMENTE": "verificado técnicamente (falta confirmación humana)",
+                "CANDIDATO_A_VERIFICAR": "candidato NO comprobado", "SIN_CONFIGURAR": "pendiente (sin candidato)"}
+    l = ["# Cobertura territorial: sitios oficiales\n", "| Estado | Significado | Municipios |", "|---|---|---|"] + \
+        [f"| {k} | {etiqueta.get(k, '')} | {v} |" for k, v in sorted(cuenta.items())]
     l += ["", "| Municipio | Estado | Sitio oficial | Fuente |", "|---|---|---|---|"]
     for s in sitios:
         l.append(f"| {s['municipio_id']} | {s['estado']} | {s['sitio_oficial']} | {(s.get('fuente') or '')[:80]} |")

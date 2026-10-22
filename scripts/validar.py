@@ -181,6 +181,9 @@ def validar(dir_actual: Path, modo: str = "prueba") -> tuple[list[str], list[str
         hosts_sitios[host_] = s_["municipio_id"]
         if s_.get("estado") in ("CONFIRMADO", "VERIFICADO_TECNICAMENTE") and not (s_.get("fuente") or "").strip():
             err.append(f"{ref}: {s_['estado']} sin fuente de la verificación")
+        for a_ in filter(None, (x.strip() for x in (s_.get("fuentes_alternativas") or "").split(";"))):
+            if not a_.startswith("https://") or _CP.dominio_homonimo(a_.split("/")[2] if a_.count("/") >= 2 else ""):
+                err.append(f"{ref}: fuentes_alternativas debe ser https y no un homónimo ('{a_}')")
         for d_ in filter(None, (x.strip() for x in (s_.get("dominios_verificados") or "").split(";"))):
             if _CP.dominio_homonimo(d_):
                 err.append(f"{ref}: dominios_verificados incluye el homónimo {d_}")

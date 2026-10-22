@@ -95,6 +95,16 @@ _RX_PROV_BA = re.compile(r"\b(?:provincia|pcia) de (?:buenos aires|bs as)\b")
 _RX_PROV_AJENA = re.compile(r"\b(?:provincia|pcia) de (" + "|".join(_PROVINCIAS_AJENAS) + r")\b")
 
 
+_TITULOS_NOMBRE = {"general", "almirante", "presidente", "coronel", "teniente", "capitan", "doctor", "brigadier", "comodoro", "gobernador"}
+
+
+def nombre_en_texto(nombre: str, texto: str) -> bool:
+    """¿El texto nombra al municipio? Acepta también la forma sin el título militar/cívico ('San Martín' por 'General San Martín')."""
+    t, n = norm(texto), norm(nombre)
+    variantes = [n] + ([n.split(" ", 1)[1]] if " " in n and n.split(" ", 1)[0] in _TITULOS_NOMBRE else [])
+    return any(re.search(rf"\b{re.escape(v)}\b", t) for v in variantes)
+
+
 def dominio_homonimo(host: str) -> str:
     """Nombre del municipio homónimo si el host pertenece a su dominio (o a un subdominio), o ''."""
     h = dominio_base(host)
@@ -266,7 +276,7 @@ def _nombre_valido(cand: str) -> str:
     return v or ""
 
 
-_ROL_TITULO = {"h1", "h2", "h3", "h4", "h5", "h6", "strong", "b", "dt", "th"}
+_ROL_TITULO = {"h1", "h2", "h3", "h4", "h5", "h6", "strong", "b", "dt", "th", "td"}
 _HERMANOS_OK = {"p", "div", "span", "small", "em", "strong", "b", "dd", "td"}
 _INLINE = {"strong", "b", "span", "em", "i", "u", "small", "a", "label"}
 
@@ -279,6 +289,7 @@ def responsable_tras_titulo(el) -> tuple[str, str, str]:
     """
     if el.name not in _ROL_TITULO:
         return "", "", ""
+    propias = deps_en(norm(el.get_text(" ", strip=True)))      # la oficina del título; el cargo puede repetirla ("Jefe de Gabinete")
     bases_ = [el] + ([el.parent] if el.name in _INLINE and el.parent is not None and el.parent.name not in ("body", "html") else [])
     for base in bases_:
         cargo_pend = ""
@@ -293,7 +304,7 @@ def responsable_tras_titulo(el) -> tuple[str, str, str]:
                     break
             if not txt:
                 continue
-            if len(txt) > 120 or deps_en(norm(txt)):
+            if len(txt) > 120 or (deps_en(norm(txt)) - propias):
                 break
             cargo, cand = (txt.partition(":")[0], txt.partition(":")[2]) if ":" in txt else (cargo_pend, txt)
             if ":" in txt and not RE_CARGO.match(cargo):
